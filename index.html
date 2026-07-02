@@ -22,8 +22,8 @@ const { useState, useMemo, useEffect } = React;
    2) Pon EXACTAMENTE el mismo token en API_TOKEN
    Si las dejas vacías, la app funciona en modo local (sin nube).
    ============================================================ */
-const API_URL = "https://script.google.com/macros/s/AKfycbx6vvoulFJC3CqQ6XEMi_06bKYpEEe6E6Vn8y088PSCh-ZenOMdmH7bqfhbVGbuLcUkDw/exec";
-const API_TOKEN = "EQUIPO-2026-bB2";
+const API_URL = "";
+const API_TOKEN = "";
 const CLOUD = API_URL.length > 10;
 async function apiList(){const r=await fetch(`${API_URL}?action=list&token=${encodeURIComponent(API_TOKEN)}`);const j=await r.json();if(!j.ok)throw new Error(j.error||"error");return j.data||[];}
 async function apiSave(rec){const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({token:API_TOKEN,action:"save",record:rec})});const j=await r.json();if(!j.ok)throw new Error(j.error||"error");return j;}
@@ -461,4 +461,3 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
-
