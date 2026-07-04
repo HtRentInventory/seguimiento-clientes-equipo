@@ -22,8 +22,8 @@ const { useState, useMemo, useEffect } = React;
    2) Pon EXACTAMENTE el mismo token en API_TOKEN
    Si las dejas vacías, la app funciona en modo local (sin nube).
    ============================================================ */
-const API_URL = "";
-const API_TOKEN = "";
+const API_URL = "https://script.google.com/macros/s/AKfycbx6vvoulFJC3CqQ6XEMi_06bKYpEEe6E6Vn8y088PSCh-ZenOMdmH7bqfhbVGbuLcUkDw/exec";
+const API_TOKEN = "EQUIPO-2026-bB2";
 const CLOUD = API_URL.length > 10;
 async function apiList(){const r=await fetch(`${API_URL}?action=list&token=${encodeURIComponent(API_TOKEN)}`);const j=await r.json();if(!j.ok)throw new Error(j.error||"error");return j.data||[];}
 async function apiSave(rec){const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({token:API_TOKEN,action:"save",record:rec})});const j=await r.json();if(!j.ok)throw new Error(j.error||"error");return j;}
@@ -38,12 +38,13 @@ const TIPOVENTA=["Arrendamiento","Financiamiento","Contado","Renta Pura"];
 const PLAZOS={"Arrendamiento":[12,24,36,48],"Renta Pura":[12,24,36,48],"Financiamiento":[3,5,10,15],"Contado":[]};
 const ADICIONALES=["Rines y Llantas","Antibicicletas","Portallantas","Caja de Herramientas","Eje retractil","Winches","Membresía Básica","Membresía Premium","Cadenas/Tecles","Concha","Piso Antiderrapante","Placas de Publicidad"];
 
-const ESTATUS=["Nueva","Presentación con Cliente","Documentando","Asignación y Contrato","Contrato recibido","Equipo listo","Programación entrega","Pend. entrega Fábrica","Pend. entrega Cliente","Entregado","Cancelado"];
+const ESTATUS=["Presentación con Cliente","Documentando","Asignación y Contrato","Contrato enviado","Contrato recibido","Equipo listo","Programación entrega","Pend. entrega Fábrica","Pend. entrega Cliente","Entregado","Cancelado"];
 const ESTATUS_COLOR={
   "Nueva":{chip:"bg-slate-100 text-slate-700 border-slate-300",spine:"bg-slate-400"},
   "Presentación con Cliente":{chip:"bg-blue-50 text-blue-700 border-blue-200",spine:"bg-blue-500"},
   "Documentando":{chip:"bg-indigo-50 text-indigo-700 border-indigo-200",spine:"bg-indigo-500"},
   "Asignación y Contrato":{chip:"bg-violet-50 text-violet-700 border-violet-200",spine:"bg-violet-500"},
+  "Contrato enviado":{chip:"bg-purple-50 text-purple-700 border-purple-200",spine:"bg-purple-500"},
   "Contrato recibido":{chip:"bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200",spine:"bg-fuchsia-500"},
   "Equipo listo":{chip:"bg-amber-50 text-amber-800 border-amber-200",spine:"bg-amber-500"},
   "Programación entrega":{chip:"bg-emerald-50 text-emerald-700 border-emerald-200",spine:"bg-emerald-500"},
@@ -53,6 +54,9 @@ const ESTATUS_COLOR={
   "Cancelado":{chip:"bg-rose-50 text-rose-700 border-rose-200",spine:"bg-rose-400"},
 };
 const CERRADOS=["Entregado","Cancelado"];
+function estIdx(e){return ESTATUS.indexOf(e);}
+function principal(es){if(!es||!es.length)return ESTATUS[0];const v=es.filter(x=>ESTATUS.includes(x));return v.length?v.slice().sort((a,b)=>estIdx(b)-estIdx(a))[0]:ESTATUS[0];}
+function normEst(r){let es=Array.isArray(r.estatuses)?r.estatuses.filter(x=>ESTATUS.includes(x)):(ESTATUS.includes(r.estatus)?[r.estatus]:[]);const est=es.length?principal(es):ESTATUS[0];if(!es.length)es=[est];return {...r,estatuses:es,estatus:est};}
 const CONTACTO=["Contestó","No contestó"];
 const TIPOS=["Llamada","Correo","WhatsApp","Visita","Reunión"];
 const TIPO_ABBR={"Llamada":"LLAM","Correo":"MAIL","WhatsApp":"WA","Visita":"VIS","Reunión":"REU"};
@@ -140,7 +144,7 @@ function filasARegistros(filas){
     r.bitacora=parseBitacora(r._bitRaw); delete r._bitRaw;
     r.requisitos={...reqPend(r.tipoCliente),...r.requisitos};
     ["ejecutivo","cliente","folioVenta","folioJJ","empresa","correo","telefono","niv","queFalta","notas"].forEach(k=>r[k]=String(r[k]||"").trim());
-    r.estatus=ESTATUS.includes(String(r.estatus).trim())?String(r.estatus).trim():"Nueva";
+    {const raw=String(r.estatus||"").split(/[;,·]/).map(s=>s.trim()).filter(x=>ESTATUS.includes(x));r.estatuses=raw.length?raw:[ESTATUS[0]];r.estatus=principal(r.estatuses);}
     return r;
   }).filter(r=>r.cliente);
 }
@@ -158,7 +162,7 @@ function demo(now){
     {...b,id:5,cliente:"CINTHIA RIOS GONZALEZ",tipoCliente:"Cliente Recurrente",empresa:"HT",telefono:"753 162 9434",equipos:[{tipo:"Porta 40/20",cantidad:1}],tipoVenta:"Arrendamiento",plazo:48,adicionales:["Eje retractil","Rines y Llantas"],estatus:"Asignación y Contrato",requisitos:reqObj(REQ_RECURRENTE,[0,1],[]),queFalta:"Falta opinión de cumplimiento",entregaProgramada:"",notas:"Stock Lázaro.",bitacora:B({fecha:addDays(HOY,-1),tipo:"WhatsApp",contacto:"Contestó",resultado:"Expediente enviado a Contratos, falta opinión de cumplimiento."})},
     {...b,id:6,cliente:"ABRAHAM ROGELIO GONZALEZ OROZCO",tipoCliente:"Cliente Recurrente",empresa:"JJ",telefono:"312 140 1076",niv:"3H1AB0098877",folioVenta:"V-10245",folioJJ:"JJ-8891",equipos:[{tipo:"Portacontenedor 40/20 Neway",cantidad:1}],tipoVenta:"Contado",plazo:"",adicionales:["Eje retractil"],estatus:"Programación entrega",requisitos:reqObj(REQ_RECURRENTE,[0,1,2],[]),queFalta:"",entregaProgramada:addDays(HOY,3),notas:"Liquidado.",bitacora:B({fecha:HOY,tipo:"Llamada",contacto:"Contestó",resultado:"Coordinamos entrega para el viernes."})},
     {...b,id:7,cliente:"IMPULSO CONSTRUCTOR",tipoCliente:"Cliente Nuevo",empresa:"HT",telefono:"443 146 0073",niv:"3H1IMP0451, 3H1IMP0452, 3H1DLY0088",equipos:[{tipo:"Porta 40/20",cantidad:2},{tipo:"Dolly",cantidad:1}],tipoVenta:"Arrendamiento",plazo:36,adicionales:["Eje retractil","Winches","Rines y Llantas"],estatus:"Pend. entrega Fábrica",requisitos:reqObj(REQ_NUEVO,[0,1,2,3,4,5,6,7,8,9,10,11,12],[]),queFalta:"Falta grabar video de fachada y de firma",entregaProgramada:"",compromiso:f(190),notas:"Compra full.",bitacora:B({fecha:addDays(HOY,-1),tipo:"Reunión",contacto:"Contestó",resultado:"Firma de contrato, se agenda video."})},
-    {...b,id:8,cliente:"COREY KAPITAL",tipoCliente:"Cliente Nuevo",empresa:"JJ",telefono:"",equipos:[{tipo:"Plana 40 HQ 3E",cantidad:5}],tipoVenta:"Contado",plazo:"",adicionales:["Rines y Llantas","Eje retractil","Winches"],estatus:"Nueva",requisitos:reqPend("Cliente Nuevo"),queFalta:"Sin pago aún",entregaProgramada:"",notas:"",bitacora:[]},
+    {...b,id:8,cliente:"COREY KAPITAL",tipoCliente:"Cliente Nuevo",empresa:"JJ",telefono:"",equipos:[{tipo:"Plana 40 HQ 3E",cantidad:5}],tipoVenta:"Contado",plazo:"",adicionales:["Rines y Llantas","Eje retractil","Winches"],estatuses:["Presentación con Cliente"],estatus:"Presentación con Cliente",requisitos:reqPend("Cliente Nuevo"),queFalta:"Sin pago aún",entregaProgramada:"",notas:"",bitacora:[]},
     {...b,id:9,cliente:"JUAN DANIEL CAZAREZ VELAZQUEZ",tipoCliente:"Cliente Nuevo",empresa:"JJ",telefono:"646 275 4026",equipos:[{tipo:"Porta 40/20 NW",cantidad:2},{tipo:"Dolly Gamy",cantidad:1}],tipoVenta:"Contado",plazo:"",adicionales:["Eje retractil"],estatus:"Documentando",requisitos:reqObj(REQ_NUEVO,[0,2],[]),queFalta:"Pendiente NIV del dolly y pago en sistema",entregaProgramada:"",compromiso:f(15),notas:"",bitacora:B({fecha:HOY,tipo:"WhatsApp",contacto:"No contestó",resultado:"Full de 2 portas + dolly, sin respuesta."})},
     {...b,id:10,cliente:"RUBEN MORAN SANCHEZ",tipoCliente:"Cliente Recurrente",empresa:"JJ",telefono:"312 170 4688",folioVenta:"V-09980",folioJJ:"JJ-8710",equipos:[{tipo:"Dolly Operbus",cantidad:1}],tipoVenta:"Contado",plazo:"",adicionales:[],estatus:"Entregado",requisitos:reqObj(REQ_RECURRENTE,[0,1,2],[]),queFalta:"",entregaProgramada:addDays(HOY,-1),notas:"Entregado en patio.",bitacora:B({fecha:addDays(HOY,-1),tipo:"Llamada",contacto:"Contestó",resultado:"Entrega concluida y firmada."})},
     {...b,id:11,cliente:"ORION INGENIERIA INDUSTRIAL",tipoCliente:"Cliente Nuevo",empresa:"HT",telefono:"56 3692 6998",equipos:[{tipo:"Plataforma 40\" 2 ejes",cantidad:1}],tipoVenta:"Arrendamiento",plazo:24,adicionales:["Eje retractil","Rines y Llantas"],estatus:"Cancelado",requisitos:reqObj(REQ_NUEVO,[0,2],[]),queFalta:"",entregaProgramada:"",notas:"Stock Lázaro liberado.",bitacora:B({fecha:HOY,tipo:"Correo",contacto:"Contestó",resultado:"Cliente canceló la solicitud."})},
@@ -169,7 +173,7 @@ function demo(now){
 
 /* ---------- Exportación con Dashboard ---------- */
 function hojaClientes(wb){const n=wb.SheetNames.find(s=>quita(s)==="clientes")||wb.SheetNames[0];return wb.Sheets[n];}
-function filaCliente(r){const o={"Ejecutivo":r.ejecutivo,"Cliente":r.cliente,"Folio Venta":r.folioVenta||"","Folio JJ":r.folioJJ||"","Tipo de cliente":r.tipoCliente,"Empresa":r.empresa,"Correo":r.correo,"Teléfono":r.telefono,"Equipo":(r.equipos||[]).filter(e=>e.tipo).map(e=>`${e.cantidad||1} x ${e.tipo}`).join(" ; "),"NIV":r.niv||"","Tipo de venta":r.tipoVenta,"Plazo (meses)":r.plazo||"","Adicionales":(r.adicionales||[]).join(", "),"Estatus":r.estatus};REQ_ALL.forEach(k=>{const v=(r.requisitos||{})[k];o[k]=v==="recibido"?"SI":v==="na"?"NA":"";});o["Pendiente actual"]=r.queFalta;o["Entrega programada"]=r.entregaProgramada;o["Compromiso"]=r.compromiso?r.compromiso.replace("T"," "):"";o["Bitácora"]=(r.bitacora||[]).map(be=>`${be.fecha} | ${be.tipo} | ${be.contacto} | ${be.resultado}`).join(" ;; ");const dg=diasEnGestion(r);o["Días en gestión"]=(dg===null?"":dg);o["Estado gestión"]=(dg===null?"":dg<=20?"En tiempo":dg<=40?"Medio plazo":dg<=60?"Por vencer":"Vencido");o["Notas"]=r.notas;return o;}
+function filaCliente(r){const o={"Ejecutivo":r.ejecutivo,"Cliente":r.cliente,"Folio Venta":r.folioVenta||"","Folio JJ":r.folioJJ||"","Tipo de cliente":r.tipoCliente,"Empresa":r.empresa,"Correo":r.correo,"Teléfono":r.telefono,"Equipo":(r.equipos||[]).filter(e=>e.tipo).map(e=>`${e.cantidad||1} x ${e.tipo}`).join(" ; "),"NIV":r.niv||"","Tipo de venta":r.tipoVenta,"Plazo (meses)":r.plazo||"","Adicionales":(r.adicionales||[]).join(", "),"Estatus":((r.estatuses&&r.estatuses.length)?r.estatuses.join(" · "):r.estatus),"Etapa principal":r.estatus};REQ_ALL.forEach(k=>{const v=(r.requisitos||{})[k];o[k]=v==="recibido"?"SI":v==="na"?"NA":"";});o["Pendiente actual"]=r.queFalta;o["Entrega programada"]=r.entregaProgramada;o["Compromiso"]=r.compromiso?r.compromiso.replace("T"," "):"";o["Bitácora"]=(r.bitacora||[]).map(be=>`${be.fecha} | ${be.tipo} | ${be.contacto} | ${be.resultado}`).join(" ;; ");const dg=diasEnGestion(r);o["Días en gestión"]=(dg===null?"":dg);o["Estado gestión"]=(dg===null?"":dg<=20?"En tiempo":dg<=40?"Medio plazo":dg<=60?"Por vencer":"Vencido");o["Notas"]=r.notas;return o;}
 function libroSimple(registros){const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(registros.map(filaCliente)),"Clientes");return wb;}
 function detallePor(registros,cats,keyFn){const aoa=[];const anchor={};cats.forEach(cat=>{const items=registros.filter(r=>keyFn(r)===cat);if(!items.length)return;anchor[cat]=aoa.length+1;aoa.push([`${cat} — ${items.length} cliente(s)`]);aoa.push(["Cliente","Ejecutivo","Empresa","Equipo","Expediente","Última interacción","Entrega","Tipo venta"]);items.forEach(r=>{const st=reqStats(r);const u=ultInter(r);aoa.push([r.cliente,r.ejecutivo,r.empresa,equiposTxt(r),st.completo?"Completo":`${st.recibido}/${st.aplicables}`,u?`${u.fecha} · ${u.tipo} · ${u.contacto}`:"",r.entregaProgramada||"",(r.tipoVenta||"")+(r.plazo?` ${r.plazo}m`:"")]);});aoa.push([]);});return {aoa,anchor};}
 function celdaLink(n,sheet,row){if(!sheet||!row)return n;return {f:`HYPERLINK("#${sheet}!A${row}","${n}")`,v:String(n)};}
@@ -179,7 +183,7 @@ function construirLibro(registros){const wb=XLSX.utils.book_new();const de=detal
 
 function App(){
   const [now,setNow]=useState(Date.now());
-  const [registros,setRegistros]=useState(()=>CLOUD?[]:demo(Date.now()));
+  const [registros,setRegistros]=useState(()=>CLOUD?[]:demo(Date.now()).map(normEst));
   const [vista,setVista]=useState("clientes");
   const [dia,setDia]=useState(HOY);
   const [fEjec,setFEjec]=useState("Todos");
@@ -193,7 +197,7 @@ function App(){
   const [sync,setSync]=useState("");
 
   useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),30000);return()=>clearInterval(t);},[]);
-  useEffect(()=>{if(!CLOUD)return;setCargando(true);apiList().then(d=>{setRegistros(d);setCargando(false);}).catch(err=>{setCargando(false);setAviso({tipo:"error",texto:"No se pudo cargar de la nube: "+err.message});});},[]);
+  useEffect(()=>{if(!CLOUD)return;setCargando(true);apiList().then(d=>{setRegistros(d.map(normEst));setCargando(false);}).catch(err=>{setCargando(false);setAviso({tipo:"error",texto:"No se pudo cargar de la nube: "+err.message});});},[]);
 
   const ejecutivos=useMemo(()=>{const s=[...new Set(registros.map(r=>r.ejecutivo).filter(Boolean))].sort();return s.length?s:EJEC_DEF;},[registros]);
   const cliPorEjec=useMemo(()=>{const m={};registros.forEach(r=>{if(!r.ejecutivo)return;(m[r.ejecutivo]=m[r.ejecutivo]||new Set()).add(r.cliente);});const o={};Object.keys(m).forEach(k=>o[k]=[...m[k]].filter(Boolean).sort());return Object.keys(o).length?o:CLI_DEF;},[registros]);
@@ -212,10 +216,10 @@ function App(){
   const expIncompletos=visibles.filter(r=>!CERRADOS.includes(r.estatus)&&!reqStats(r).completo).length;
   const entregas7=visibles.filter(r=>r.entregaProgramada&&r.entregaProgramada>=HOY&&r.entregaProgramada<=addDays(HOY,7)).length;
 
-  const guardar=reg=>{const id=reg.id||(Math.max(0,...registros.map(x=>x.id))+1);const saved={...reg,id};setRegistros(prev=>prev.some(r=>r.id===id)?prev.map(r=>r.id===id?saved:r):[...prev,saved]);setEditando(null);if(CLOUD){setSync("Guardando…");apiSave(saved).then(()=>setSync("Guardado en la nube ✓")).catch(()=>setSync("⚠ Error al guardar en la nube"));}};
+  const guardar=reg=>{const id=reg.id||(Math.max(0,...registros.map(x=>x.id))+1);const saved=normEst({...reg,id});setRegistros(prev=>prev.some(r=>r.id===id)?prev.map(r=>r.id===id?saved:r):[...prev,saved]);setEditando(null);if(CLOUD){setSync("Guardando…");apiSave(saved).then(()=>setSync("Guardado en la nube ✓")).catch(()=>setSync("⚠ Error al guardar en la nube"));}};
   const marcarLlamada=id=>{setRegistros(prev=>prev.map(r=>r.id===id?{...r,compromisoCumplido:true}:r));if(CLOUD){const rec=registros.find(r=>r.id===id);if(rec)apiSave({...rec,compromisoCumplido:true}).catch(()=>{});}};
   const cambiarEjec=v=>{setFEjec(v);setFCli("Todos");};
-  function recargar(){setSync("Cargando…");apiList().then(d=>{setRegistros(d);setSync("Actualizado ✓");}).catch(e=>setSync("Error: "+e.message));}
+  function recargar(){setSync("Cargando…");apiList().then(d=>{setRegistros(d.map(normEst));setSync("Actualizado ✓");}).catch(e=>setSync("Error: "+e.message));}
   function subirTodo(){setSync("Subiendo…");apiBulk(registros).then(j=>setSync("Subido ✓ ("+(j.n!=null?j.n:registros.length)+" clientes)")).catch(e=>setSync("Error: "+e.message));}
 
   function cargarFilas(filas){const regs=filasARegistros(filas);if(!regs.length){setAviso({tipo:"error",texto:"No se encontraron renglones válidos. Revisa que exista la columna Cliente."});return;}setRegistros(regs);setFEjec("Todos");setFCli("Todos");setBusca("");setAviso({tipo:"ok",texto:`Se cargaron ${regs.length} clientes.`});}
@@ -249,7 +253,7 @@ function App(){
           <div className="flex flex-wrap items-center gap-2">
             <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-stone-50"><Icon name="upload" size={15}/> Subir Excel / CSV<input type="file" accept=".xlsx,.xls,.csv" onChange={onArchivo} className="hidden"/></label>
             <button onClick={exportar} className="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-stone-50"><Icon name="download" size={15}/> Exportar Excel</button>
-            <button onClick={()=>{setRegistros(demo(Date.now()));setFEjec("Todos");setFCli("Todos");setBusca("");setFEstatus("");setAviso(null);}} className="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-500 hover:bg-stone-50">Datos de ejemplo</button>
+            <button onClick={()=>{setRegistros(demo(Date.now()).map(normEst));setFEjec("Todos");setFCli("Todos");setBusca("");setFEstatus("");setAviso(null);}} className="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-500 hover:bg-stone-50">Datos de ejemplo</button>
             <div className="flex flex-1 items-center gap-1.5 min-w-[240px]"><div className="flex flex-1 items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-2.5"><Icon name="link" size={14} className="text-slate-400"/><input value={sheetUrl} onChange={e=>setSheetUrl(e.target.value)} placeholder="URL de Google Sheet…" className="flex-1 py-1.5 text-sm outline-none"/></div><button onClick={cargarSheet} className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800">Cargar</button></div>
           </div>
           {aviso && <div className={`mt-2 rounded-md px-3 py-1.5 text-xs font-medium ${aviso.tipo==="ok"?"bg-emerald-50 text-emerald-700":aviso.tipo==="error"?"bg-red-50 text-red-700":"bg-sky-50 text-sky-700"}`}>{aviso.texto}</div>}
@@ -344,7 +348,7 @@ function Tarjeta({r,now,onEdit,onListo}){
   const ring=e==="vencido"?"ring-2 ring-red-400 border-red-300":e==="proximo"?"ring-2 ring-amber-400 border-amber-300":"border-stone-200";
   return (<div className={`group relative w-full overflow-hidden rounded-xl border bg-white transition-shadow hover:shadow-md ${ring}`}><span className={`absolute inset-y-0 left-0 w-1.5 ${c.spine}`}></span>
     <button onClick={()=>onEdit(r)} className="block w-full p-4 pl-5 text-left">
-      <div className="flex items-start justify-between gap-2"><div className="flex items-center gap-2 min-w-0">{e && <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${e==="vencido"?"bg-red-500":e==="proximo"?"bg-amber-500":"bg-sky-400"}`}></span>}<div className="min-w-0"><div className="flex items-center gap-1.5"><p className={`font-bold leading-tight truncate ${e==="vencido"?"text-red-700":e==="proximo"?"text-amber-800":"text-slate-900"}`}>{r.cliente}</p></div><p className="text-xs text-slate-500 mt-0.5">{r.ejecutivo}</p>{(r.folioVenta||r.folioJJ)&&<p className="text-[10px] text-slate-400 mono mt-0.5">{r.folioVenta?`V: ${r.folioVenta}`:""}{r.folioVenta&&r.folioJJ?"  ·  ":""}{r.folioJJ?`JJ: ${r.folioJJ}`:""}</p>}</div></div><div className="flex flex-col items-end gap-1 shrink-0"><Badge estatus={r.estatus}/><div className="flex items-center gap-1"><ClienteTipoTag tc={r.tipoCliente}/><EmpresaTag empresa={r.empresa}/></div></div></div>
+      <div className="flex items-start justify-between gap-2"><div className="flex items-center gap-2 min-w-0">{e && <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${e==="vencido"?"bg-red-500":e==="proximo"?"bg-amber-500":"bg-sky-400"}`}></span>}<div className="min-w-0"><div className="flex items-center gap-1.5"><p className={`font-bold leading-tight truncate ${e==="vencido"?"text-red-700":e==="proximo"?"text-amber-800":"text-slate-900"}`}>{r.cliente}</p></div><p className="text-xs text-slate-500 mt-0.5">{r.ejecutivo}</p>{(r.folioVenta||r.folioJJ)&&<p className="text-[10px] text-slate-400 mono mt-0.5">{r.folioVenta?`V: ${r.folioVenta}`:""}{r.folioVenta&&r.folioJJ?"  ·  ":""}{r.folioJJ?`JJ: ${r.folioJJ}`:""}</p>}</div></div><div className="flex flex-col items-end gap-1 shrink-0"><Badges r={r}/><div className="flex items-center gap-1"><ClienteTipoTag tc={r.tipoCliente}/><EmpresaTag empresa={r.empresa}/></div></div></div>
       {eqt && <p className="mt-2 text-xs font-medium text-slate-600 inline-flex items-start gap-1"><Icon name="truck" size={12} className="text-slate-400 mt-0.5 shrink-0"/><span>{eqt}</span></p>}
       {r.niv && <p className="mt-1 text-xs text-slate-500 mono truncate">NIV: {String(r.niv).split(/[\n,]+/).map(x=>x.trim()).filter(Boolean).join(", ")}</p>}{r.tipoVenta && <p className="mt-1 text-xs text-slate-500"><span className="font-semibold text-slate-600">{r.tipoVenta}</span>{r.plazo?` · ${r.plazo} meses`:""}</p>}
       <div className="mt-2 rounded-md bg-stone-50 border border-stone-100 px-2 py-1.5 text-xs">{u?(<div className="flex items-start gap-1.5"><Icon name="history" size={12} className="text-slate-400 mt-0.5 shrink-0"/><div className="min-w-0"><span className="font-semibold text-slate-600">{corto(u.fecha)} · {u.tipo} · </span><ContactoTag contacto={u.contacto} inline/>{u.resultado && <span className="text-slate-600"> — {u.resultado}</span>}<span className="text-slate-400 mono"> · {nb} {nb===1?"interacción":"interacciones"}</span></div></div>):<span className="text-slate-400 inline-flex items-center gap-1"><Icon name="history" size={12}/> Sin interacciones aún</span>}</div>
@@ -364,10 +368,11 @@ function TarjetaMini({r,now,onEdit}){
 
 /* ---------- Modal ---------- */
 function Modal({inicial,fEjec,ejecutivos,cliPorEjec,onClose,onSave}){
-  const base=inicial||{creado:HOY,ejecutivo:fEjec!=="Todos"?fEjec:(ejecutivos[0]||""),cliente:"",folioVenta:"",folioJJ:"",tipoCliente:"Cliente Nuevo",empresa:"",correo:"",telefono:"",niv:"",equipos:[{tipo:"",cantidad:1}],tipoVenta:"",plazo:"",adicionales:[],estatus:"Nueva",requisitos:reqPend("Cliente Nuevo"),queFalta:"",entregaProgramada:"",compromiso:"",compromisoCumplido:false,bitacora:[],notas:""};
-  const [f,setF]=useState({...base,niv:base.niv||"",folioVenta:base.folioVenta||"",folioJJ:base.folioJJ||"",equipos:(base.equipos&&base.equipos.length)?base.equipos.map(e=>({...e})):[{tipo:"",cantidad:1}],adicionales:[...(base.adicionales||[])],requisitos:{...reqPend(base.tipoCliente||"Cliente Nuevo"),...(base.requisitos||{})},bitacora:[...(base.bitacora||[])]});
+  const base=inicial||{creado:HOY,ejecutivo:fEjec!=="Todos"?fEjec:(ejecutivos[0]||""),cliente:"",folioVenta:"",folioJJ:"",tipoCliente:"Cliente Nuevo",empresa:"",correo:"",telefono:"",niv:"",equipos:[{tipo:"",cantidad:1}],tipoVenta:"",plazo:"",adicionales:[],estatuses:["Presentación con Cliente"],estatus:"Presentación con Cliente",requisitos:reqPend("Cliente Nuevo"),queFalta:"",entregaProgramada:"",compromiso:"",compromisoCumplido:false,bitacora:[],notas:""};
+  const [f,setF]=useState({...base,niv:base.niv||"",folioVenta:base.folioVenta||"",folioJJ:base.folioJJ||"",estatuses:[...(base.estatuses||(base.estatus?[base.estatus]:[ESTATUS[0]]))],equipos:(base.equipos&&base.equipos.length)?base.equipos.map(e=>({...e})):[{tipo:"",cantidad:1}],adicionales:[...(base.adicionales||[])],requisitos:{...reqPend(base.tipoCliente||"Cliente Nuevo"),...(base.requisitos||{})},bitacora:[...(base.bitacora||[])]});
   const [nb,setNb]=useState({fecha:HOY,tipo:"Llamada",contacto:"Contestó",resultado:""});
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
+  const toggleEst=est=>setF(p=>{const cur=p.estatuses||[];const has=cur.includes(est);const es=has?cur.filter(x=>x!==est):[...cur,est];return{...p,estatuses:es,estatus:principal(es)};});
   const setTC=v=>setF(p=>({...p,tipoCliente:v,requisitos:{...reqPend(v),...p.requisitos}}));
   const ciclaReq=k=>setF(p=>{const c=p.requisitos[k]||"pendiente";const n=c==="pendiente"?"recibido":c==="recibido"?"na":"pendiente";return {...p,requisitos:{...p.requisitos,[k]:n}};});
   const setEq=(i,campo,val)=>setF(p=>({...p,equipos:p.equipos.map((e,j)=>j===i?{...e,[campo]:campo==="cantidad"?(val===""?"":Math.max(1,parseInt(val)||1)):val}:e)}));
@@ -420,7 +425,7 @@ function Modal({inicial,fEjec,ejecutivos,cliPorEjec,onClose,onSave}){
           {bitOrd.length>0 && (<div className="mt-3 space-y-1.5 border-t border-slate-200 pt-2">{bitOrd.map(be=>(<div key={be.id} className="flex items-start gap-2 rounded-md bg-white border border-stone-200 px-2 py-1.5 text-xs"><TipoTag tipo={be.tipo}/><div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><span className="font-semibold text-slate-600">{corto(be.fecha)}</span><ContactoTag contacto={be.contacto} compacto/></div>{be.resultado && <p className="text-slate-600">{be.resultado}</p>}</div><button onClick={()=>delBit(be.id)} className="text-slate-300 hover:text-red-500"><Icon name="x" size={13}/></button></div>))}</div>)}
         </div>
 
-        <Campo label="Estatus de la solicitud"><div className="flex flex-wrap gap-1.5">{ESTATUS.map(est=><button key={est} onClick={()=>set("estatus",est)} className={`rounded-full border px-2.5 py-1 text-xs font-medium ${f.estatus===est?ESTATUS_COLOR[est].chip+" ring-2 ring-offset-1 ring-slate-300":"border-stone-300 text-slate-500 hover:bg-stone-50"}`}>{est}</button>)}</div></Campo>
+        <Campo label="Estatus de la solicitud (marca todas las etapas que apliquen)"><div className="flex flex-wrap gap-1.5">{ESTATUS.map(est=>{const on=(f.estatuses||[]).includes(est);return <button key={est} onClick={()=>toggleEst(est)} className={`rounded-full border px-2.5 py-1 text-xs font-medium ${on?ESTATUS_COLOR[est].chip+" ring-2 ring-offset-1 ring-slate-300":"border-stone-300 text-slate-500 hover:bg-stone-50"}`}>{on?"✓ ":""}{est}</button>;})}</div><span className="mt-1.5 block text-[11px] text-slate-400">En el tablero y los conteos aparece según la etapa más avanzada marcada: <span className="font-semibold text-slate-600">{principal(f.estatuses||[])}</span></span></Campo>
 
         <div className="rounded-xl border border-stone-200 bg-stone-50 p-3"><div className="flex items-center justify-between mb-2"><div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500"><Icon name="clip" size={14}/> Requisitos · {f.tipoCliente==="Cliente Recurrente"?"Recurrente":"Nuevo"}</div><span className={`text-xs font-bold mono ${st.completo?"text-emerald-600":"text-indigo-600"}`}>{st.completo?"Completo":`${st.recibido}/${st.aplicables}`}</span></div><p className="text-xs text-slate-400 mb-2">Clic para alternar: <span className="text-slate-500 font-medium">Pendiente → Recibido → No aplica</span></p><div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">{reqListFor(f.tipoCliente).map(k=>{const v=f.requisitos[k]||"pendiente";const s=v==="recibido"?"bg-emerald-600 text-white border-emerald-600":v==="na"?"bg-stone-100 text-slate-400 border-stone-200 line-through":"bg-white border-stone-300 text-slate-600 hover:bg-stone-50";return (<button key={k} onClick={()=>ciclaReq(k)} className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium text-left ${s}`}><span className="shrink-0">{v==="recibido"?<Icon name="check" size={13}/>:v==="na"?<Icon name="x" size={12}/>:<span className="inline-block h-3 w-3 rounded-full border border-current opacity-40"></span>}</span><span className="truncate">{k}</span></button>);})}</div></div>
 
@@ -436,6 +441,7 @@ function Modal({inicial,fEjec,ejecutivos,cliPorEjec,onClose,onSave}){
 
 /* ---------- Piezas ---------- */
 function Campo({label,children}){return <label className="block"><span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>{children}</label>;}
+function Badges({r}){const es=(r.estatuses&&r.estatuses.length)?r.estatuses:[r.estatus];const ord=es.slice().sort((a,b)=>estIdx(a)-estIdx(b));return <div className="flex flex-wrap gap-1 justify-end max-w-[190px]">{ord.map(e=>{const c=ESTATUS_COLOR[e]||ESTATUS_COLOR[ESTATUS[0]];const p=e===r.estatus&&ord.length>1;return <span key={e} className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${c.chip} ${p?"ring-1 ring-slate-400":""}`}>{e}</span>;})}</div>;}
 function Badge({estatus}){const c=ESTATUS_COLOR[estatus]||ESTATUS_COLOR["Nueva"];return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap ${c.chip}`}>{estatus}</span>;}
 function ContactoTag({contacto,compacto,inline}){const co=contacto==="Contestó";const cls=co?"text-emerald-600":"text-red-500";const dot=co?"bg-emerald-500":"bg-red-500";if(inline)return <span className={`font-semibold ${cls}`}>{contacto}</span>;return <span className={`inline-flex items-center gap-1 text-xs font-medium ${cls}`}><span className={`h-1.5 w-1.5 rounded-full ${dot}`}></span>{!compacto&&contacto}</span>;}
 function TableroEtapas({counts,total,activo,onPick}){
