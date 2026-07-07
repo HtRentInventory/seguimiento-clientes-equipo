@@ -203,7 +203,7 @@ function App(){
   const cliPorEjec=useMemo(()=>{const m={};registros.forEach(r=>{if(!r.ejecutivo)return;(m[r.ejecutivo]=m[r.ejecutivo]||new Set()).add(r.cliente);});const o={};Object.keys(m).forEach(k=>o[k]=[...m[k]].filter(Boolean).sort());return Object.keys(o).length?o:CLI_DEF;},[registros]);
   const clientesOpc=fEjec==="Todos"?["Todos",...new Set(Object.values(cliPorEjec).flat())]:["Todos",...(cliPorEjec[fEjec]||[])];
 
-  const pasa=r=>(fEjec==="Todos"||r.ejecutivo===fEjec)&&(fCli==="Todos"||r.cliente===fCli)&&(!busca||quita(r.cliente).includes(quita(busca)))&&(fEstatus===""||r.estatus===fEstatus);
+  const pasa=r=>(fEjec==="Todos"||r.ejecutivo===fEjec)&&(fCli==="Todos"||r.cliente===fCli)&&(!busca||quita((r.cliente||"")+" "+(r.niv||"")+" "+(r.folioVenta||"")+" "+(r.folioJJ||"")+" "+(r.telefono||"")).includes(quita(busca)))&&(fEstatus===""||r.estatus===fEstatus);
   const visibles=useMemo(()=>registros.filter(pasa),[registros,fEjec,fCli,busca,fEstatus]);
   const porEjec=useMemo(()=>registros.filter(r=>fEjec==="Todos"||r.ejecutivo===fEjec),[registros,fEjec]);
   const etapaCounts=useMemo(()=>ESTATUS.map(e=>({est:e,n:porEjec.filter(r=>r.estatus===e).length})),[porEjec]);
@@ -215,6 +215,9 @@ function App(){
   const hayVencidas=visibles.some(r=>estadoCompromiso(r,now)==="vencido");
   const expIncompletos=visibles.filter(r=>!CERRADOS.includes(r.estatus)&&!reqStats(r).completo).length;
   const entregas7=visibles.filter(r=>r.entregaProgramada&&r.entregaProgramada>=HOY&&r.entregaProgramada<=addDays(HOY,7)).length;
+  const numEquipos=r=>(r.equipos||[]).reduce((a,e)=>a+(e.tipo?(Number(e.cantidad)||1):0),0);
+  const totalClientes=porEjec.length;
+  const totalEquipos=porEjec.reduce((s,r)=>s+numEquipos(r),0);
 
   const guardar=reg=>{const id=reg.id||(Math.max(0,...registros.map(x=>x.id))+1);const saved=normEst({...reg,id});setRegistros(prev=>prev.some(r=>r.id===id)?prev.map(r=>r.id===id?saved:r):[...prev,saved]);setEditando(null);if(CLOUD){setSync("Guardando…");apiSave(saved).then(()=>setSync("Guardado en la nube ✓")).catch(()=>setSync("⚠ Error al guardar en la nube"));}};
   const marcarLlamada=id=>{setRegistros(prev=>prev.map(r=>r.id===id?{...r,compromisoCumplido:true}:r));if(CLOUD){const rec=registros.find(r=>r.id===id);if(rec)apiSave({...rec,compromisoCumplido:true}).catch(()=>{});}};
@@ -262,17 +265,19 @@ function App(){
 
         {urgentes.length>0 && <Banner urgentes={urgentes} now={now} onEdit={setEditando} onListo={marcarLlamada} hayVencidas={hayVencidas}/>}
 
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
+          <Kpi icon="user" label={fEjec==="Todos"?"Clientes (total)":"Clientes · "+fEjec} valor={totalClientes} tono="text-slate-900"/>
+          <Kpi icon="truck" label={fEjec==="Todos"?"Equipos · unidades":"Equipos · "+fEjec} valor={totalEquipos} tono="text-amber-600"/>
           <Kpi icon="alarm" label="Llamadas por hacer" valor={porMarcar} tono={hayVencidas?"text-red-600":"text-slate-900"}/>
           <Kpi icon="clip" label="Expedientes por completar" valor={expIncompletos} tono="text-indigo-600"/>
-          <Kpi icon="truck" label="Entregas próx. 7 días" valor={entregas7} tono="text-emerald-600"/>
+          <Kpi icon="calendar" label="Entregas próx. 7 días" valor={entregas7} tono="text-emerald-600"/>
         </div>
         <TableroEtapas counts={etapaCounts} total={porEjec.length} activo={fEstatus} onPick={est=>{setFEstatus(fEstatus===est?"":est);setVista("clientes");}}/>
 
         <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
           <div className="inline-flex rounded-lg border border-stone-300 bg-white p-0.5"><Tab activo={vista==="clientes"} onClick={()=>setVista("clientes")}>Clientes</Tab><Tab activo={vista==="tablero"} onClick={()=>setVista("tablero")}>Tablero</Tab><Tab activo={vista==="lista"} onClick={()=>setVista("lista")}>Lista</Tab><Tab activo={vista==="dia"} onClick={()=>setVista("dia")}>Día</Tab></div>
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-2.5"><Icon name="search" size={14} className="text-slate-400"/><input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar cliente…" className="py-1.5 text-sm outline-none w-32"/></div>
+            <div className="flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-2.5"><Icon name="search" size={14} className="text-slate-400"/><input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar cliente, NIV, folio, tel…" className="py-1.5 text-sm outline-none w-48"/></div>
             <Select value={fEjec} onChange={cambiarEjec} options={["Todos",...ejecutivos]} prefijo="Ejecutivo"/>
             <Select value={fCli} onChange={setFCli} options={clientesOpc} prefijo="Cliente"/>
           </div>
