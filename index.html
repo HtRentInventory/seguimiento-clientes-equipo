@@ -219,7 +219,7 @@ function App(){
   const totalClientes=porEjec.length;
   const totalEquipos=porEjec.reduce((s,r)=>s+numEquipos(r),0);
 
-  const guardar=reg=>{const id=reg.id||(Math.max(0,...registros.map(x=>x.id))+1);const saved=normEst({...reg,id});setRegistros(prev=>prev.some(r=>r.id===id)?prev.map(r=>r.id===id?saved:r):[...prev,saved]);setEditando(null);if(CLOUD){setSync("Guardando…");apiSave(saved).then(()=>setSync("Guardado en la nube ✓")).catch(()=>setSync("⚠ Error al guardar en la nube"));}};
+  const guardar=reg=>{const id=reg.id||(Math.max(0,...registros.map(x=>x.id))+1);const saved=normEst({...reg,id});if((saved.estatuses||[]).includes("Entregado")){if(!saved.fechaEntregadoMarcado)saved.fechaEntregadoMarcado=HOY;}else{saved.fechaEntregadoMarcado="";}setRegistros(prev=>prev.some(r=>r.id===id)?prev.map(r=>r.id===id?saved:r):[...prev,saved]);setEditando(null);if(CLOUD){setSync("Guardando…");apiSave(saved).then(()=>setSync("Guardado en la nube ✓")).catch(()=>setSync("⚠ Error al guardar en la nube"));}};
   const marcarLlamada=id=>{setRegistros(prev=>prev.map(r=>r.id===id?{...r,compromisoCumplido:true}:r));if(CLOUD){const rec=registros.find(r=>r.id===id);if(rec)apiSave({...rec,compromisoCumplido:true}).catch(()=>{});}};
   const cambiarEjec=v=>{setFEjec(v);setFCli("Todos");};
   function recargar(){setSync("Cargando…");apiList().then(d=>{setRegistros(d.map(normEst));setSync("Actualizado ✓");}).catch(e=>setSync("Error: "+e.message));}
@@ -260,7 +260,7 @@ function App(){
             <div className="flex flex-1 items-center gap-1.5 min-w-[240px]"><div className="flex flex-1 items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-2.5"><Icon name="link" size={14} className="text-slate-400"/><input value={sheetUrl} onChange={e=>setSheetUrl(e.target.value)} placeholder="URL de Google Sheet…" className="flex-1 py-1.5 text-sm outline-none"/></div><button onClick={cargarSheet} className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800">Cargar</button></div>
           </div>
           {aviso && <div className={`mt-2 rounded-md px-3 py-1.5 text-xs font-medium ${aviso.tipo==="ok"?"bg-emerald-50 text-emerald-700":aviso.tipo==="error"?"bg-red-50 text-red-700":"bg-sky-50 text-sky-700"}`}>{aviso.texto}</div>}
-          {CLOUD && <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-stone-100 pt-2"><span className="text-xs font-semibold text-slate-500">Nube:</span><button onClick={recargar} className="rounded-lg border border-stone-300 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-stone-50">Recargar</button><button onClick={subirTodo} className="rounded-lg border border-stone-300 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-stone-50">Subir todo (reemplaza)</button>{sync && <span className="text-xs font-medium text-slate-600">{sync}</span>}</div>}
+          {CLOUD && <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-stone-100 pt-2"><span className="text-xs font-semibold text-slate-500">Nube:</span><button onClick={recargar} className="rounded-lg border border-stone-300 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-stone-50">Recargar</button>{sync && <span className="text-xs font-medium text-slate-600">{sync}</span>}</div>}
         </div>
 
         {urgentes.length>0 && <Banner urgentes={urgentes} now={now} onEdit={setEditando} onListo={marcarLlamada} hayVencidas={hayVencidas}/>}
@@ -472,3 +472,4 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
+
