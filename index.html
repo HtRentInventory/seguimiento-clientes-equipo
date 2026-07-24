@@ -24,6 +24,10 @@ const { useState, useMemo, useEffect } = React;
    ============================================================ */
 const API_URL = "https://script.google.com/macros/s/AKfycbx6vvoulFJC3CqQ6XEMi_06bKYpEEe6E6Vn8y088PSCh-ZenOMdmH7bqfhbVGbuLcUkDw/exec";
 const API_TOKEN = "EQUIPO-2026-bB2";
+
+/* ---- CONTRASEÑAS DE ACCESO (cámbialas cuando quieras) ---- */
+const PASS_VER  = "1234";            // solo consultar
+const PASS_EDIT = "Ht_R3nt2026";     // consultar y editar
 const CLOUD = API_URL.length > 10;
 async function apiList(){const r=await fetch(`${API_URL}?action=list&token=${encodeURIComponent(API_TOKEN)}`);const j=await r.json();if(!j.ok)throw new Error(j.error||"error");return j.data||[];}
 async function apiSave(rec){const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({token:API_TOKEN,action:"save",record:rec})});const j=await r.json();if(!j.ok)throw new Error(j.error||"error");return j;}
@@ -192,7 +196,31 @@ function aoaConFormulas(R){const ws={};let maxc=0;R.forEach((row,ri)=>row.forEac
 function construirDashboard(registros,ancE,ancJ){const R=[];const cnt=fn=>registros.filter(fn).length;R.push(["SEGUIMIENTO A CLIENTES · HT RENT — DASHBOARD"]);R.push(["Generado: "+HOY]);R.push([]);R.push(["RESUMEN GENERAL"]);R.push(["Total de clientes",registros.length]);R.push(["Expedientes completos",cnt(r=>reqStats(r).completo)]);R.push(["Expedientes por completar",cnt(r=>!CERRADOS.includes(r.estatus)&&!reqStats(r).completo)]);R.push(["Entregas próximas (7 días)",cnt(r=>r.entregaProgramada&&r.entregaProgramada>=HOY&&r.entregaProgramada<=addDays(HOY,7))]);R.push(["Llamadas pendientes",cnt(r=>estadoCompromiso(r,Date.now()))]);R.push([]);R.push(["CLIENTES POR ETAPA","","clic en el número para ver el detalle"]);ESTATUS.forEach(e=>{const n=cnt(r=>r.estatus===e);R.push([e,celdaLink(n,"DetalleEtapa",ancE[e])]);});R.push([]);R.push(["CLIENTES POR EJECUTIVO","","clic en el número para ver el detalle"]);[...new Set(registros.map(r=>r.ejecutivo).filter(Boolean))].sort().forEach(j=>{const n=cnt(r=>r.ejecutivo===j);R.push([j,celdaLink(n,"DetalleEjecutivo",ancJ[j])]);});R.push([]);R.push(["POR TIPO DE VENTA"]);TIPOVENTA.forEach(t=>{const n=cnt(r=>r.tipoVenta===t);if(n)R.push([t,n]);});R.push([]);R.push(["POR TIPO DE CLIENTE"]);TIPO_CLIENTE.forEach(t=>R.push([t,cnt(r=>r.tipoCliente===t)]));R.push([]);R.push(["POR EMPRESA"]);[...new Set(registros.map(r=>r.empresa).filter(Boolean))].sort().forEach(e=>R.push([e,cnt(r=>r.empresa===e)]));return aoaConFormulas(R);}
 function construirLibro(registros){const wb=XLSX.utils.book_new();const de=detallePor(registros,ESTATUS,r=>r.estatus);const ej=[...new Set(registros.map(r=>r.ejecutivo).filter(Boolean))].sort();const dj=detallePor(registros,ej,r=>r.ejecutivo);const wsDash=construirDashboard(registros,de.anchor,dj.anchor);const wsCli=XLSX.utils.json_to_sheet(registros.map(filaCliente));const wsDE=XLSX.utils.aoa_to_sheet(de.aoa.length?de.aoa:[["Sin datos"]]);const wsDJ=XLSX.utils.aoa_to_sheet(dj.aoa.length?dj.aoa:[["Sin datos"]]);XLSX.utils.book_append_sheet(wb,wsDash,"Dashboard");XLSX.utils.book_append_sheet(wb,wsCli,"Clientes");XLSX.utils.book_append_sheet(wb,wsDE,"DetalleEtapa");XLSX.utils.book_append_sheet(wb,wsDJ,"DetalleEjecutivo");return wb;}
 
+function Puerta({onEntrar}){
+  const [v,setV]=useState("");const [err,setErr]=useState("");
+  const inpP="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100";
+  const probar=()=>{const p=v.trim();
+    if(p===PASS_EDIT){onEntrar("edit");return;}
+    if(p===PASS_VER){onEntrar("ver");return;}
+    setErr("Contraseña incorrecta.");};
+  return (<div className="grid min-h-screen place-items-center px-5">
+    <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+      <div className="h-1 bg-amber-500"></div>
+      <div className="p-6">
+        <div className="mb-4"><h1 className="text-lg font-bold tracking-tight text-slate-900">Seguimiento a Clientes</h1><p className="mono text-xs text-slate-500 mt-1">SERVICIO A CLIENTES · HT RENT</p></div>
+        <p className="mb-3 text-sm text-slate-500">Escribe tu contraseña para entrar.</p>
+        <input type="password" value={v} autoFocus onChange={e=>{setV(e.target.value);setErr("");}} onKeyDown={e=>{if(e.key==="Enter")probar();}} className={inpP} placeholder="Contraseña"/>
+        {err && <p className="mt-2 text-xs font-semibold text-red-600">{err}</p>}
+        <button onClick={probar} className="mt-3 w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Entrar</button>
+        <p className="mt-3 text-[11px] leading-relaxed text-slate-400">Con la contraseña de consulta puedes ver toda la información. Para capturar o modificar necesitas la contraseña de edición.</p>
+      </div>
+    </div>
+  </div>);
+}
+
 function App(){
+  const [modo,setModo]=useState(null);
+  const puedeEditar=modo==="edit";
   const [now,setNow]=useState(Date.now());
   const [registros,setRegistros]=useState(()=>CLOUD?[]:demo(Date.now()).map(normEst));
   const [vista,setVista]=useState("clientes");
@@ -259,18 +287,23 @@ function App(){
     ;
   }
 
+  if(!modo) return <Puerta onEntrar={setModo}/>;
+
   return (
     <div className="min-h-screen text-slate-800" style={{fontFamily:"ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif"}}>
       <header className="border-b border-stone-200 bg-white">
         <div className="h-1 bg-amber-500"></div>
-        <div className="mx-auto max-w-6xl px-5 py-4 flex items-center justify-between gap-4 flex-wrap"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-lg bg-slate-900 text-amber-400"><Icon name="truck" size={20}/></div><div><h1 className="text-lg font-bold tracking-tight text-slate-900 leading-none">Seguimiento a Clientes</h1><p className="text-xs text-slate-500 mt-1 mono">SERVICIO A CLIENTES · HT RENT</p></div></div><button onClick={()=>setEditando("nuevo")} className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-semibold text-white hover:bg-slate-800"><Icon name="plus" size={16}/> Nuevo cliente</button></div>
+        <div className="mx-auto max-w-6xl px-5 py-4 flex items-center justify-between gap-4 flex-wrap"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-lg bg-slate-900 text-amber-400"><Icon name="truck" size={20}/></div><div><h1 className="text-lg font-bold tracking-tight text-slate-900 leading-none">Seguimiento a Clientes</h1><p className="text-xs text-slate-500 mt-1 mono">SERVICIO A CLIENTES · HT RENT</p></div></div><div className="flex items-center gap-2">
+          <button onClick={()=>setModo(null)} title="Cambiar de modo" className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold ${puedeEditar?"border-emerald-300 bg-emerald-50 text-emerald-700":"border-stone-300 bg-stone-50 text-slate-500"}`}>{puedeEditar?"✎ Edición":"👁 Solo consulta"}</button>
+          {puedeEditar && <button onClick={()=>setEditando("nuevo")} className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-semibold text-white hover:bg-slate-800"><Icon name="plus" size={16}/> Nuevo cliente</button>}
+        </div></div>
       </header>
 
       <main className="mx-auto max-w-6xl px-5 py-5">
         {cargando && <div className="mb-4 rounded-lg bg-sky-50 text-sky-700 px-3 py-2 text-sm font-medium">Cargando datos de la nube…</div>}
         <div className="mb-5 rounded-xl border border-stone-200 bg-white p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-stone-50"><Icon name="upload" size={15}/> Subir Excel / CSV<input type="file" accept=".xlsx,.xls,.csv" onChange={onArchivo} className="hidden"/></label>
+            {puedeEditar && <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-stone-50"><Icon name="upload" size={15}/> Subir Excel / CSV<input type="file" accept=".xlsx,.xls,.csv" onChange={onArchivo} className="hidden"/></label>}
             <button onClick={exportar} className="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-stone-50"><Icon name="download" size={15}/> Exportar Excel</button>
             <button onClick={()=>{setRegistros(demo(Date.now()).map(normEst));setFEjec("Todos");setFCli("Todos");setBusca("");setFEstatus("");setAviso(null);}} className="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-500 hover:bg-stone-50">Datos de ejemplo</button>
             <div className="flex flex-1 items-center gap-1.5 min-w-[240px]"><div className="flex flex-1 items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-2.5"><Icon name="link" size={14} className="text-slate-400"/><input value={sheetUrl} onChange={e=>setSheetUrl(e.target.value)} placeholder="URL de Google Sheet…" className="flex-1 py-1.5 text-sm outline-none"/></div><button onClick={cargarSheet} className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800">Cargar</button></div>
@@ -308,7 +341,7 @@ function App(){
         {vista==="dia" && <AgendaDia dia={dia} setDia={setDia} agenda={agenda} onEdit={setEditando}/>}
       </main>
 
-      {editando && <Modal inicial={editando==="nuevo"?null:editando} fEjec={fEjec} ejecutivos={ejecutivos} cliPorEjec={cliPorEjec} onClose={()=>setEditando(null)} onSave={guardar}/>}
+      {editando && <Modal puedeEditar={puedeEditar} inicial={editando==="nuevo"?null:editando} fEjec={fEjec} ejecutivos={ejecutivos} cliPorEjec={cliPorEjec} onClose={()=>setEditando(null)} onSave={guardar}/>}
     </div>
   );
 }
@@ -391,18 +424,19 @@ function TarjetaMini({r,now,onEdit}){
 }
 
 /* ---------- Modal ---------- */
-function Modal({inicial,fEjec,ejecutivos,cliPorEjec,onClose,onSave}){
+function Modal({inicial,fEjec,ejecutivos,cliPorEjec,onClose,onSave,puedeEditar}){
   const base=inicial||{creado:HOY,ejecutivo:fEjec!=="Todos"?fEjec:(ejecutivos[0]||""),cliente:"",folioVenta:"",folioJJ:"",tipoContrato:"",entregaFabrica:"",archivos:{},tipoCliente:"Cliente Nuevo",empresa:"",correo:"",telefono:"",niv:"",equipos:[{tipo:"",cantidad:1}],tipoVenta:"",plazo:"",adicionales:[],estatuses:["Presentación con Cliente"],estatus:"Presentación con Cliente",requisitos:reqPend("Cliente Nuevo"),queFalta:"",entregaProgramada:"",compromiso:"",compromisoCumplido:false,bitacora:[],notas:""};
   const [f,setF]=useState({...base,niv:base.niv||"",folioVenta:base.folioVenta||"",folioJJ:base.folioJJ||"",tipoContrato:base.tipoContrato||"",entregaFabrica:base.entregaFabrica||"",estatuses:[...(base.estatuses||(base.estatus?[base.estatus]:[ESTATUS[0]]))],equipos:(base.equipos&&base.equipos.length)?base.equipos.map(e=>({...e})):[{tipo:"",cantidad:1}],adicionales:[...(base.adicionales||[])],requisitos:{...reqPend(base.tipoCliente||"Cliente Nuevo"),...(base.requisitos||{})},archivos:JSON.parse(JSON.stringify(base.archivos||{})),bitacora:[...(base.bitacora||[])]});
   const [subiendo,setSubiendo]=useState("");
   async function subirArchivo(docKey,file){
+    if(!puedeEditar){alert("Modo consulta: no puedes subir archivos.");return;}
     if(!CLOUD){alert("Para subir archivos primero conecta la nube (API_URL y API_TOKEN).");return;}
     if(!String(f.cliente||"").trim()){alert("Captura primero el nombre del cliente; los archivos se guardan en su carpeta.");return;}
     try{setSubiendo(docKey);const c=await comprimir(file);const j=await apiUpload(String(f.cliente).trim(),docKey,c.nombre,c.mime,c.b64);
       setF(p=>({...p,archivos:{...(p.archivos||{}),[docKey]:[...(((p.archivos||{})[docKey])||[]),{id:j.id,url:j.url,nombre:c.nombre,fecha:HOY}]}}));setSubiendo("");
     }catch(err){setSubiendo("");alert("No se pudo subir: "+err.message);}
   }
-  function quitarArchivo(docKey,idx){if(!window.confirm("¿Quitar este archivo del expediente?\n(El archivo permanece en tu Google Drive.)"))return;setF(p=>{const arr=[...(((p.archivos||{})[docKey])||[])];arr.splice(idx,1);return{...p,archivos:{...(p.archivos||{}),[docKey]:arr}};});}
+  function quitarArchivo(docKey,idx){if(!puedeEditar)return;if(!window.confirm("¿Quitar este archivo del expediente?\n(El archivo permanece en tu Google Drive.)"))return;setF(p=>{const arr=[...(((p.archivos||{})[docKey])||[])];arr.splice(idx,1);return{...p,archivos:{...(p.archivos||{}),[docKey]:arr}};});}
   const [nb,setNb]=useState({fecha:HOY,tipo:"Llamada",contacto:"Contestó",resultado:""});
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
   const toggleEst=est=>setF(p=>{const cur=p.estatuses||[];const has=cur.includes(est);const es=has?cur.filter(x=>x!==est):[...cur,est];return{...p,estatuses:es,estatus:principal(es)};});
@@ -468,7 +502,7 @@ function Modal({inicial,fEjec,ejecutivos,cliPorEjec,onClose,onSave}){
         <div className="grid grid-cols-2 gap-3"><Campo label="Entrega de fábrica o taller" hint="Cuándo llega el equipo"><input type="date" value={f.entregaFabrica} onChange={e=>set("entregaFabrica",e.target.value)} className={inp}/></Campo><Campo label="Fecha de entrega al cliente"><input type="date" value={f.entregaProgramada} onChange={e=>set("entregaProgramada",e.target.value)} className={inp}/></Campo></div>
         <Campo label="Notas (opcional)"><textarea value={f.notas} onChange={e=>set("notas",e.target.value)} rows={2} className={inp}/></Campo>
       </div>
-      <div className="sticky bottom-0 flex justify-end gap-2 border-t border-stone-200 bg-white px-5 py-3"><button onClick={onClose} className="rounded-lg px-3.5 py-2 text-sm font-semibold text-slate-600 hover:bg-stone-100">Cancelar</button><button onClick={()=>valido&&guardarLimpio()} disabled={!valido} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-40">{inicial?"Guardar cambios":"Crear cliente"}</button></div>
+      <div className="sticky bottom-0 flex justify-end gap-2 border-t border-stone-200 bg-white px-5 py-3"><button onClick={onClose} className="rounded-lg px-3.5 py-2 text-sm font-semibold text-slate-600 hover:bg-stone-100">Cancelar</button><button onClick={()=>valido&&guardarLimpio()} disabled={!valido||!puedeEditar} title={puedeEditar?"":"Modo consulta: no puedes guardar"} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-40">{inicial?"Guardar cambios":"Crear cliente"}</button></div>
     </div>
   </div>);
 }
@@ -501,4 +535,3 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
-
