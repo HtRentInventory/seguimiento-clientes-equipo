@@ -262,6 +262,9 @@ function App(){
   const entregados=porEjec.filter(r=>(r.estatuses||[]).includes("Entregado"));
   const entregClientes=entregados.length;
   const entregEquipos=entregados.reduce((s,r)=>s+numEquipos(r),0);
+  const cancelados=porEjec.filter(r=>(r.estatuses||[]).includes("Cancelado"));
+  const cancelClientes=cancelados.length;
+  const cancelEquipos=cancelados.reduce((s,r)=>s+numEquipos(r),0);
 
   const guardar=reg=>{const id=reg.id||(Math.max(0,...registros.map(x=>x.id))+1);const saved=normEst({...reg,id});if((saved.estatuses||[]).includes("Entregado")){if(!saved.fechaEntregadoMarcado)saved.fechaEntregadoMarcado=HOY;}else{saved.fechaEntregadoMarcado="";}setRegistros(prev=>prev.some(r=>r.id===id)?prev.map(r=>r.id===id?saved:r):[...prev,saved]);setEditando(null);if(CLOUD){setSync("Guardando…");apiSave(saved).then(()=>setSync("Guardado en la nube ✓")).catch(()=>setSync("⚠ Error al guardar en la nube"));}};
   const marcarLlamada=id=>{setRegistros(prev=>prev.map(r=>r.id===id?{...r,compromisoCumplido:true}:r));if(CLOUD){const rec=registros.find(r=>r.id===id);if(rec)apiSave({...rec,compromisoCumplido:true}).catch(()=>{});}};
@@ -314,10 +317,11 @@ function App(){
 
         {urgentes.length>0 && <Banner urgentes={urgentes} now={now} onEdit={setEditando} onListo={marcarLlamada} hayVencidas={hayVencidas}/>}
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-5">
           <Kpi icon="user" label={fEjec==="Todos"?"Clientes (total)":"Clientes · "+fEjec} valor={totalClientes} tono="text-slate-900"/>
           <Kpi icon="truck" label={fEjec==="Todos"?"Equipos · unidades":"Equipos · "+fEjec} valor={totalEquipos} tono="text-amber-600"/>
           <button onClick={()=>{setFEstatus(fEstatus==="Entregado"?"":"Entregado");setVista("clientes");}} className={`rounded-xl border bg-white px-4 py-3 text-left transition-all ${fEstatus==="Entregado"?"border-teal-400 ring-2 ring-teal-200":"border-stone-200 hover:bg-stone-50"}`}><div className="flex items-center gap-1.5 text-slate-400"><Icon name="check" size={16}/><span className="text-xs font-medium text-slate-500">{fEjec==="Todos"?"Entregados":"Entregados · "+fEjec}</span></div><p className="mt-1 text-2xl font-bold mono text-teal-600 leading-none">{entregEquipos}<span className="text-xs font-medium text-slate-400"> equipos</span></p><p className="text-[11px] text-slate-400 mt-0.5">{entregClientes} cliente(s)</p></button>
+          <button onClick={()=>{setFEstatus(fEstatus==="Cancelado"?"":"Cancelado");setVista("clientes");}} className={`rounded-xl border bg-white px-4 py-3 text-left transition-all ${fEstatus==="Cancelado"?"border-rose-400 ring-2 ring-rose-200":"border-stone-200 hover:bg-stone-50"}`}><div className="flex items-center gap-1.5 text-slate-400"><Icon name="x" size={16}/><span className="text-xs font-medium text-slate-500">{fEjec==="Todos"?"Cancelados":"Cancelados · "+fEjec}</span></div><p className="mt-1 text-2xl font-bold mono text-rose-600 leading-none">{cancelEquipos}<span className="text-xs font-medium text-slate-400"> equipos</span></p><p className="text-[11px] text-slate-400 mt-0.5">{cancelClientes} cliente(s)</p></button>
           <Kpi icon="alarm" label="Llamadas por hacer" valor={porMarcar} tono={hayVencidas?"text-red-600":"text-slate-900"}/>
           <Kpi icon="clip" label="Expedientes por completar" valor={expIncompletos} tono="text-indigo-600"/>
           <Kpi icon="calendar" label="Entregas próx. 7 días" valor={entregas7} tono="text-emerald-600"/>
