@@ -56,6 +56,7 @@ function marcasDe(eq){const k=_norm(eq);return [...new Set(CAT2.filter(c=>_norm(
 function condsDe(eq,marca){const k=_norm(eq);return [...new Set(CAT2.filter(c=>_norm(c.n)===k&&(!marca||c.m===marca)).map(c=>c.c))];}
 function aniosDe(eq,marca,cond){const k=_norm(eq);return [...new Set(CAT2.filter(c=>_norm(c.n)===k&&(!marca||c.m===marca)&&(!cond||c.c===cond)).map(c=>c.a))].sort((a,b)=>Number(b)-Number(a));}
 function precioCombo(eq,marca,anio,cond){const k=_norm(eq);const hit=CAT2.find(c=>_norm(c.n)===k&&c.m===marca&&String(c.a)===String(anio)&&c.c===cond);return hit?hit.p:0;}
+function variantesDe(eq){const k=_norm(eq);return CAT2.filter(c=>_norm(c.n)===k).map(c=>({m:c.m,a:c.a,c:c.c,p:c.p,key:c.m+"|"+c.a+"|"+c.c})).sort((x,y)=>x.m.localeCompare(y.m)||Number(y.a)-Number(x.a)||x.c.localeCompare(y.c));}
 function precioEquipoLinea(eq){const auto=precioCombo(eq.tipo,eq.marca,eq.anio,eq.condicion);if(auto>0)return auto;const p=Number(eq.precio);return isNaN(p)?0:p;}
 function valorVenta(r){return (r.equipos||[]).reduce((s,eq)=>s+precioEquipoLinea(eq)*(Number(eq.cantidad)||0),0);}
 function unidades(r){return (r.equipos||[]).reduce((s,eq)=>s+(Number(eq.cantidad)||0),0);}
@@ -527,13 +528,13 @@ function Modal({inicial,fEjec,ejecutivos,cliPorEjec,onClose,onSave,puedeEditar})
   const toggleEst=est=>setF(p=>{const cur=p.estatuses||[];const has=cur.includes(est);const es=has?cur.filter(x=>x!==est):[...cur,est];return{...p,estatuses:es,estatus:principal(es)};});
   const setTC=v=>setF(p=>({...p,tipoCliente:v,requisitos:{...reqPend(v),...p.requisitos}}));
   const ciclaReq=k=>setF(p=>{const c=p.requisitos[k]||"pendiente";const n=c==="pendiente"?"recibido":c==="recibido"?"na":"pendiente";return {...p,requisitos:{...p.requisitos,[k]:n}};});
-  function autofill(e){const marcas=marcasDe(e.tipo);const marca=e.marca&&marcas.includes(e.marca)?e.marca:(marcas.length===1?marcas[0]:e.marca);const conds=condsDe(e.tipo,marca);const cond=e.condicion&&conds.includes(e.condicion)?e.condicion:(conds.length===1?conds[0]:e.condicion);const anios=aniosDe(e.tipo,marca,cond);const anio=e.anio&&anios.includes(String(e.anio))?e.anio:(anios.length===1?anios[0]:e.anio);return {...e,marca,condicion:cond,anio};}
   const setEq=(i,campo,val)=>setF(p=>({...p,equipos:p.equipos.map((e,j)=>{if(j!==i)return e;
     if(campo==="cantidad")return{...e,cantidad:val===""?"":Math.max(1,parseInt(val)||1)};
     if(campo==="precio")return{...e,precio:val===""?"":Math.max(0,Number(val)||0)};
-    let ne={...e,[campo]:val};
-    if(campo==="tipo"||campo==="marca"||campo==="condicion"||campo==="anio"){ne=autofill(ne);ne.precio="";}
-    return ne;})}));
+    if(campo==="variante"){if(!val)return{...e,marca:"",anio:"",condicion:"",precio:""};const[m,a,c]=val.split("|");return{...e,marca:m,anio:a,condicion:c,precio:""};}
+    if(campo==="tipo")return{...e,tipo:val,marca:"",anio:"",condicion:"",precio:""};
+    return{...e,[campo]:val};})}));
+  
   const addEq=()=>setF(p=>({...p,equipos:[...p.equipos,{tipo:"",cantidad:1,marca:"",anio:"",condicion:"",precio:""}]}));
   const delEq=i=>setF(p=>({...p,equipos:p.equipos.filter((_,j)=>j!==i)}));
   const setTV=v=>setF(p=>({...p,tipoVenta:v,plazo:(PLAZOS[v]||[]).includes(p.plazo)?p.plazo:""}));
@@ -566,23 +567,19 @@ function Modal({inicial,fEjec,ejecutivos,cliPorEjec,onClose,onSave,puedeEditar})
 
         <div className="grid grid-cols-2 gap-3"><Campo label="Correo electrónico"><input type="email" value={f.correo} onChange={e=>set("correo",e.target.value)} className={inp} placeholder="cliente@correo.com"/></Campo><Campo label="Teléfono"><input value={f.telefono} onChange={e=>set("telefono",e.target.value)} className={inp} placeholder="871 000 0000"/></Campo></div>
 
-        <div><span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Equipo / remolque</span><div className="flex gap-2 mb-1 text-[10px] uppercase tracking-wide text-slate-400 font-semibold"><span className="flex-1">Descripción</span><span className="w-16 text-center">Cant.</span>{f.equipos.length>1 && <span className="w-8"></span>}</div><div className="space-y-2">{f.equipos.map((eq,i)=>{const sub=precioEquipoLinea(eq)*(Number(eq.cantidad)||0);const marcas=marcasDe(eq.tipo);const conds=condsDe(eq.tipo,eq.marca);const anios=aniosDe(eq.tipo,eq.marca,eq.condicion);const auto=precioCombo(eq.tipo,eq.marca,eq.anio,eq.condicion);const selCls="rounded-lg border border-stone-300 bg-white px-2 py-2 text-sm outline-none focus:border-slate-400";return (
+        <div><span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Equipo / remolque</span><div className="flex gap-2 mb-1 text-[10px] uppercase tracking-wide text-slate-400 font-semibold"><span className="flex-1">Descripción</span><span className="w-16 text-center">Cant.</span>{f.equipos.length>1 && <span className="w-8"></span>}</div><div className="space-y-2">{f.equipos.map((eq,i)=>{const sub=precioEquipoLinea(eq)*(Number(eq.cantidad)||0);const vars=variantesDe(eq.tipo);const curKey=(eq.marca&&eq.anio&&eq.condicion)?(eq.marca+"|"+eq.anio+"|"+eq.condicion):"";const auto=precioCombo(eq.tipo,eq.marca,eq.anio,eq.condicion);return (
                 <div key={i} className="rounded-lg border border-stone-200 bg-stone-50/50 p-2 space-y-2">
                   <div className="flex items-center gap-2">
                     <input list="dl-catalogo" value={eq.tipo} onChange={e=>setEq(i,"tipo",e.target.value)} placeholder="Equipo (escribe o elige del catálogo)…" className="flex-1 min-w-0 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"/>
                     <input type="number" min="1" value={eq.cantidad} onChange={e=>setEq(i,"cantidad",e.target.value)} title="Cantidad" className="w-14 shrink-0 text-center rounded-lg border border-stone-300 bg-white px-2 py-2 text-sm outline-none focus:border-slate-400"/>
                     {f.equipos.length>1 && <button onClick={()=>delEq(i)} className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-slate-400 hover:bg-stone-100 hover:text-red-500"><Icon name="x" size={16}/></button>}
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <select value={eq.marca||""} onChange={e=>setEq(i,"marca",e.target.value)} className={selCls}><option value="">Marca…</option>{marcas.map(m=><option key={m} value={m}>{m}</option>)}</select>
-                    <select value={eq.condicion||""} onChange={e=>setEq(i,"condicion",e.target.value)} className={selCls}><option value="">Condición…</option>{conds.map(c=><option key={c} value={c}>{condLabel(eq.marca,c)}</option>)}</select>
-                    <select value={eq.anio||""} onChange={e=>setEq(i,"anio",e.target.value)} className={selCls}><option value="">Año…</option>{anios.map(a=><option key={a} value={a}>{a}</option>)}</select>
-                  </div>
+                  {vars.length>0 ? <select value={curKey} onChange={e=>setEq(i,"variante",e.target.value)} className="w-full rounded-lg border border-stone-300 bg-white px-2 py-2 text-sm outline-none focus:border-slate-400"><option value="">Elige marca · año · condición ({vars.length} opciones)…</option>{vars.map(v=><option key={v.key} value={v.key}>{v.m} · {v.a} · {condLabel(v.m,v.c)} — {pesos(v.p)}</option>)}</select>
+                    : (eq.tipo ? <p className="text-[11px] text-amber-600 px-0.5">Este equipo no está en el catálogo de costos · captura el precio a mano.</p> : null)}
                   <div className="flex items-center gap-2 pl-0.5">
                     <span className="text-[11px] font-medium text-slate-400">Precio unit.</span><span className="text-slate-400 text-sm">$</span>
-                    <input type="number" min="0" value={eq.precio===""||eq.precio==null?"":eq.precio} onChange={e=>setEq(i,"precio",e.target.value)} placeholder={auto?String(auto):"captura o elige combinación"} className="w-32 rounded-lg border border-stone-300 bg-white px-2 py-1 text-sm mono outline-none focus:border-slate-400"/>
+                    <input type="number" min="0" value={eq.precio===""||eq.precio==null?"":eq.precio} onChange={e=>setEq(i,"precio",e.target.value)} placeholder={auto?String(auto):"captura o elige de la lista"} className="w-32 rounded-lg border border-stone-300 bg-white px-2 py-1 text-sm mono outline-none focus:border-slate-400"/>
                     {auto>0 && (eq.precio===""||eq.precio==null) && <span className="text-[10px] text-emerald-600">✓ del catálogo</span>}
-                    {auto===0 && eq.tipo && eq.marca && eq.condicion && eq.anio && (eq.precio===""||eq.precio==null) && <span className="text-[10px] text-amber-600">sin precio en catálogo · captúralo</span>}
                     <span className="ml-auto text-xs font-bold text-slate-600 mono">{sub>0?pesos(sub):""}</span>
                   </div>
                 </div>);})}
