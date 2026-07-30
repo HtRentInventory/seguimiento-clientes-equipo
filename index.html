@@ -55,8 +55,10 @@ const EQUIPOS_CAT=[...new Set(CAT2.map(c=>c.n))].sort((a,b)=>a.localeCompare(b))
 function marcasDe(eq){const k=_norm(eq);return [...new Set(CAT2.filter(c=>_norm(c.n)===k).map(c=>c.m))];}
 function condsDe(eq,marca){const k=_norm(eq);return [...new Set(CAT2.filter(c=>_norm(c.n)===k&&(!marca||c.m===marca)).map(c=>c.c))];}
 function aniosDe(eq,marca,cond){const k=_norm(eq);return [...new Set(CAT2.filter(c=>_norm(c.n)===k&&(!marca||c.m===marca)&&(!cond||c.c===cond)).map(c=>c.a))].sort((a,b)=>Number(b)-Number(a));}
-function precioCombo(eq,marca,anio,cond){const k=_norm(eq);const hit=CAT2.find(c=>_norm(c.n)===k&&c.m===marca&&String(c.a)===String(anio)&&c.c===cond);return hit?hit.p:0;}
-function variantesDe(eq){const k=_norm(eq);return CAT2.filter(c=>_norm(c.n)===k).map(c=>({m:c.m,a:c.a,c:c.c,p:c.p,key:c.m+"|"+c.a+"|"+c.c})).sort((x,y)=>x.m.localeCompare(y.m)||Number(y.a)-Number(x.a)||x.c.localeCompare(y.c));}
+const IVA=0.16;
+const conIVA=p=>Math.round((Number(p)||0)*(1+IVA));
+function precioCombo(eq,marca,anio,cond){const k=_norm(eq);const hit=CAT2.find(c=>_norm(c.n)===k&&c.m===marca&&String(c.a)===String(anio)&&c.c===cond);return hit?conIVA(hit.p):0;}
+function variantesDe(eq){const k=_norm(eq);return CAT2.filter(c=>_norm(c.n)===k).map(c=>({m:c.m,a:c.a,c:c.c,p:conIVA(c.p),key:c.m+"|"+c.a+"|"+c.c})).sort((x,y)=>x.m.localeCompare(y.m)||Number(y.a)-Number(x.a)||x.c.localeCompare(y.c));}
 function precioEquipoLinea(eq){const auto=precioCombo(eq.tipo,eq.marca,eq.anio,eq.condicion);if(auto>0)return auto;const p=Number(eq.precio);return isNaN(p)?0:p;}
 function valorVenta(r){return (r.equipos||[]).reduce((s,eq)=>s+precioEquipoLinea(eq)*(Number(eq.cantidad)||0),0);}
 function unidades(r){return (r.equipos||[]).reduce((s,eq)=>s+(Number(eq.cantidad)||0),0);}
@@ -644,4 +646,3 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
-
