@@ -46,6 +46,19 @@ async function apiBulk(recs){const r=await fetch(API_URL,{method:"POST",headers:
 const EJEC_DEF=["Sara Alonso","Aracely de Ochoa","Omar Guevara","Mary Morales"];
 const CLI_DEF={"Sara Alonso":[],"Aracely de Ochoa":[],"Omar Guevara":[],"Mary Morales":[]};
 const EMPRESAS=["HT","JJ","3C"];
+const CATALOGO=[{n:"Caja Seca 40 Pies Galvanizado y Triplay",m:"ATRO",p:569400},{n:"Caja Seca 48 Pies Galvanizado y Triplay (Eje Corredizo)",m:"ATRO",p:569400},{n:"Caja seca 53\" Reforzada",m:"ATRO",p:621400},{n:"Caja Seca 53 Pies ATROPLAY (Eje Corredizo)",m:"ATRO",p:581400},{n:"CAMA BAJA DE 48\" 2 EJES",m:"FORZA",p:470000},{n:"CAMA BAJA DE 48\" 3 EJES",m:"FORZA",p:500000},{n:"Cama Baja 40 Pies 2 EJES",m:"ATRO",p:455900},{n:"Cama Baja 50 Pies 2 EJES",m:"ATRO",p:483100},{n:"Cama baja 53 2 ejes",m:"FORZA",p:560000},{n:"Cama Baja 53 3 ejes",m:"FORZA",p:625000},{n:"DOLLY",m:"ATRO",p:228400},{n:"Encortinado 38 40 Atro 2 eje",m:"ATRO",p:510600},{n:"Jaula Chatarrera 40 pies 2 Ejes",m:"ATRO",p:533600},{n:"Plataforma 53\" 2 ejes",m:"ATRO",p:495600},{n:"Plataforma 2 ejes 48\"",m:"ATRO",p:450600},{n:"Plataforma 3 ejes 48\"",m:"FORZA",p:515000},{n:"Plataforma 40 pies multimodal 2 ejes",m:"ATRO",p:414100},{n:"Plataforma ALTA 40\" 3 ejes",m:"FORZA",p:390000},{n:"Plataformas ALTA 40\" 2 Ejes",m:"ATRO",p:400600},{n:"Plataformas 40 pies 3 Ejes",m:"ATRO",p:448100},{n:"PLATAFROMA MULTIMODAL 40\" 2 EJES",m:"FORZA",p:425000},{n:"PLATAFROMA MULTIMODAL 40\" 3 EJES",m:"FORZA",p:490000},{n:"Plataforma 53\" 3 ejes",m:"ATRO",p:570000},{n:"PLATAFORMA MULTIMODAL 40\" 3 EJES",m:"ATRO",p:472900},{n:"Porta 20\" Forza",m:"FORZA",p:270000},{n:"Porta 40/20 Fijo",m:"FORZA",p:302000},{n:"Porta 40/20/20",m:"FORZA",p:315000},{n:"Porta Contenedor 40 pies 2 Ejes",m:"ATRO",p:219800},{n:"Porta EXTENDIBLE 40/20",m:"FORZA",p:385000},{n:"PortaContenedor 20-40 Pies **Extendible Mx**",m:"ATRO",p:348100},{n:"PORTACONTENEDOR FIJO 40/20 8 CANDADOS",m:"ATRO",p:368600},{n:"PORTA ISOTANQUE 2 EJES",m:"FORZA",p:325000},{n:"Tolva presurizada 28m 2 ejes",m:"ATRO",p:620100},{n:"VOLTEO /GONDOLA 2 EJES 30M",m:"ATRO",p:536100},{n:"VOLTEO GONDOLOA 3 EJES 30M",m:"ATRO",p:596100},{n:"BURRITA NUEVA Porta 40/20 en muelles",m:"FORZA",p:198000},{n:"GRANELERA 2 EJES",m:"FORZA",p:689000},{n:"CAJA SECA 57\" 2 EJES",m:"ATRO",p:650000},{n:"CAJA SECA 57\" 3 EJES",m:"ATRO",p:755000},{n:"CAJA SECA 53\"",m:"FORZA",p:689000},{n:"CAJA SECA 48",m:"FORZA",p:669900},{n:"CAJA 40",m:"FORZA",p:649000},{n:"CHATARRERA 2 EJES",m:"FORZA",p:620000},{n:"tolva 2 ejes",m:"FORZA",p:829000},{n:"PORTA 40.20 REFRI MASAS",m:"FORZA",p:749000}];
+const _norm=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/["'’]/g,"").replace(/\s+/g," ").trim();
+const CAT_MAP=(()=>{const m={};CATALOGO.forEach(c=>{m[_norm(c.n)]=c.p;});return m;})();
+function precioCatalogo(tipo){return CAT_MAP[_norm(tipo)]||0;}
+function precioEquipoLinea(eq){const p=(eq.precio===""||eq.precio==null)?precioCatalogo(eq.tipo):Number(eq.precio);return isNaN(p)?0:p;}
+function valorVenta(r){return (r.equipos||[]).reduce((s,eq)=>s+precioEquipoLinea(eq)*(Number(eq.cantidad)||0),0);}
+function unidades(r){return (r.equipos||[]).reduce((s,eq)=>s+(Number(eq.cantidad)||0),0);}
+const pesos=n=>{const v=Number(n)||0;return v.toLocaleString("es-MX",{style:"currency",currency:"MXN",maximumFractionDigits:0});};
+const MESES_V=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+function mesDe(fecha){if(!fecha)return null;const s=String(fecha).slice(0,7);const[a,m]=s.split("-").map(Number);if(!a||!m)return null;return {anio:a,mes:m,key:a+"-"+String(m).padStart(2,"0")};}
+function fueEntregado(r){return (r.estatuses||[]).includes("Entregado");}
+function fechaEntrega(r){return r.entregaProgramada||r.fechaEntregadoMarcado||"";}
+const PATIOS=["Monterrey - HT","Monterrey - JJ","Monterrey - Tractomundo","Lazaro - JJ","Manzanillo - Alligar","Manzanillo - JJ","Veracruz - JJ","Veracruz - Fernandez","Altamira - JJ","Queretaro - JJ/HT"];
 const TIPO_CLIENTE=["Cliente Nuevo","Cliente Recurrente"];
 const TIPOVENTA=["Arrendamiento","Financiamiento","Contado","Renta Pura"];
 const TIPO_CONTRATO=["Notariado","Convencional"];
@@ -128,7 +141,7 @@ function estadoCompromiso(r,now){if(!r.compromiso||r.compromisoCumplido)return n
 
 /* ---------- Import ---------- */
 function quita(k){return String(k).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();}
-const MAP={ejecutivo:"ejecutivo",cliente:"cliente","folio venta":"folioVenta","folio de venta":"folioVenta","folio jj":"folioJJ","tipo de contrato":"tipoContrato","entrega de fabrica o taller":"entregaFabrica","entrega fabrica":"entregaFabrica","tipo de cliente":"_tcRaw","tipo cliente":"_tcRaw",
+const MAP={ejecutivo:"ejecutivo",cliente:"cliente","folio venta":"folioVenta","folio de venta":"folioVenta","folio jj":"folioJJ","tipo de contrato":"tipoContrato","patio de entrega":"patioEntrega","entrega de fabrica o taller":"entregaFabrica","entrega fabrica":"entregaFabrica","tipo de cliente":"_tcRaw","tipo cliente":"_tcRaw",
   empresa:"empresa",marca:"empresa",correo:"correo","correo electronico":"correo",email:"correo",
   telefono:"telefono",tel:"telefono",celular:"telefono",
   equipo:"_equipoRaw",equipos:"_equipoRaw",remolque:"_equipoRaw",niv:"niv","niv de equipo":"niv",nivs:"niv",
@@ -147,7 +160,7 @@ function normTC(v){return quita(v).includes("recurrente")?"Cliente Recurrente":"
 function parseBitacora(v){if(v==null)return[];const s=String(v).trim();if(!s)return[];return s.split(/\s*;;\s*|\n/).map(x=>x.trim()).filter(Boolean).map((p,i)=>{const parts=p.split("|").map(z=>z.trim());return {id:i+1,fecha:normFecha(parts[0])||HOY,tipo:TIPOS.includes(parts[1])?parts[1]:"Llamada",contacto:CONTACTO.includes(parts[2])?parts[2]:"Contestó",resultado:parts.slice(3).join(" | ")||""};});}
 function filasARegistros(filas){
   return filas.map((row,i)=>{
-    const r={id:i+1,creado:HOY,ejecutivo:"",cliente:"",folioVenta:"",folioJJ:"",tipoContrato:"",entregaFabrica:"",archivos:{},tipoCliente:"Cliente Nuevo",empresa:"",correo:"",telefono:"",niv:"",equipos:[],tipoVenta:"",plazo:"",adicionales:[],estatus:"Nueva",requisitos:{},queFalta:"",entregaProgramada:"",compromiso:"",compromisoCumplido:false,bitacora:[],notas:""};
+    const r={id:i+1,creado:HOY,ejecutivo:"",cliente:"",folioVenta:"",folioJJ:"",tipoContrato:"",patioEntrega:"",entregaFabrica:"",archivos:{},tipoCliente:"Cliente Nuevo",empresa:"",correo:"",telefono:"",niv:"",equipos:[],tipoVenta:"",plazo:"",adicionales:[],estatus:"Nueva",requisitos:{},queFalta:"",entregaProgramada:"",compromiso:"",compromisoCumplido:false,bitacora:[],notas:""};
     for(const k in row){const key=quita(k);const f=MAP[key];if(f){r[f]=row[k];}else if(REQ_MAP[key]!==undefined){const v=quita(row[k]);r.requisitos[REQ_MAP[key]]=VERDAD.has(v)?"recibido":NOAPLICA.has(v)?"na":"pendiente";}}
     r.tipoCliente=normTC(r._tcRaw); delete r._tcRaw;
     r.entregaProgramada=r.entregaProgramada?normFecha(r.entregaProgramada):"";
@@ -188,7 +201,7 @@ function demo(now){
 
 /* ---------- Exportación con Dashboard ---------- */
 function hojaClientes(wb){const n=wb.SheetNames.find(s=>quita(s)==="clientes")||wb.SheetNames[0];return wb.Sheets[n];}
-function filaCliente(r){const o={"Ejecutivo":r.ejecutivo,"Cliente":r.cliente,"Folio Venta":r.folioVenta||"","Folio JJ":r.folioJJ||"","Tipo de contrato":r.tipoContrato||"","Tipo de cliente":r.tipoCliente,"Empresa":r.empresa,"Correo":r.correo,"Teléfono":r.telefono,"Equipo":(r.equipos||[]).filter(e=>e.tipo).map(e=>`${e.cantidad||1} x ${e.tipo}`).join(" ; "),"NIV":r.niv||"","Tipo de venta":r.tipoVenta,"Plazo (meses)":r.plazo||"","Adicionales":(r.adicionales||[]).join(", "),"Estatus":((r.estatuses&&r.estatuses.length)?r.estatuses.join(" · "):r.estatus),"Etapa principal":r.estatus};REQ_ALL.forEach(k=>{const v=(r.requisitos||{})[k];o[k]=v==="recibido"?"SI":v==="na"?"NA":"";});o["Pendiente actual"]=r.queFalta;o["Entrega de fábrica o taller"]=r.entregaFabrica||"";o["Entrega programada"]=r.entregaProgramada;o["Compromiso"]=r.compromiso?r.compromiso.replace("T"," "):"";o["Bitácora"]=(r.bitacora||[]).map(be=>`${be.fecha} | ${be.tipo} | ${be.contacto} | ${be.resultado}`).join(" ;; ");const dg=diasEnGestion(r);o["Días en gestión"]=(dg===null?"":dg);o["Estado gestión"]=(dg===null?"":dg<=20?"En tiempo":dg<=40?"Medio plazo":dg<=60?"Por vencer":"Vencido");o["Notas"]=r.notas;return o;}
+function filaCliente(r){const o={"Ejecutivo":r.ejecutivo,"Cliente":r.cliente,"Folio Venta":r.folioVenta||"","Folio JJ":r.folioJJ||"","Tipo de contrato":r.tipoContrato||"","Tipo de cliente":r.tipoCliente,"Empresa":r.empresa,"Correo":r.correo,"Teléfono":r.telefono,"Equipo":(r.equipos||[]).filter(e=>e.tipo).map(e=>`${e.cantidad||1} x ${e.tipo}`).join(" ; "),"NIV":r.niv||"","Tipo de venta":r.tipoVenta,"Plazo (meses)":r.plazo||"","Adicionales":(r.adicionales||[]).join(", "),"Estatus":((r.estatuses&&r.estatuses.length)?r.estatuses.join(" · "):r.estatus),"Etapa principal":r.estatus};REQ_ALL.forEach(k=>{const v=(r.requisitos||{})[k];o[k]=v==="recibido"?"SI":v==="na"?"NA":"";});o["Pendiente actual"]=r.queFalta;o["Patio de entrega"]=r.patioEntrega||"";o["Entrega de fábrica o taller"]=r.entregaFabrica||"";o["Entrega programada"]=r.entregaProgramada;o["Compromiso"]=r.compromiso?r.compromiso.replace("T"," "):"";o["Bitácora"]=(r.bitacora||[]).map(be=>`${be.fecha} | ${be.tipo} | ${be.contacto} | ${be.resultado}`).join(" ;; ");const dg=diasEnGestion(r);o["Días en gestión"]=(dg===null?"":dg);o["Estado gestión"]=(dg===null?"":dg<=20?"En tiempo":dg<=40?"Medio plazo":dg<=60?"Por vencer":"Vencido");o["Notas"]=r.notas;return o;}
 function libroSimple(registros){const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(registros.map(filaCliente)),"Clientes");return wb;}
 function detallePor(registros,cats,keyFn){const aoa=[];const anchor={};cats.forEach(cat=>{const items=registros.filter(r=>keyFn(r)===cat);if(!items.length)return;anchor[cat]=aoa.length+1;aoa.push([`${cat} — ${items.length} cliente(s)`]);aoa.push(["Cliente","Ejecutivo","Empresa","Equipo","Expediente","Última interacción","Entrega","Tipo venta"]);items.forEach(r=>{const st=reqStats(r);const u=ultInter(r);aoa.push([r.cliente,r.ejecutivo,r.empresa,equiposTxt(r),st.completo?"Completo":`${st.recibido}/${st.aplicables}`,u?`${u.fecha} · ${u.tipo} · ${u.contacto}`:"",r.entregaProgramada||"",(r.tipoVenta||"")+(r.plazo?` ${r.plazo}m`:"")]);});aoa.push([]);});return {aoa,anchor};}
 function celdaLink(n,sheet,row){if(!sheet||!row)return n;return {f:`HYPERLINK("#${sheet}!A${row}","${n}")`,v:String(n)};}
@@ -215,6 +228,66 @@ function Puerta({onEntrar}){
         <p className="mt-3 text-[11px] leading-relaxed text-slate-400">Con la contraseña de consulta puedes ver toda la información. Para capturar o modificar necesitas la contraseña de edición.</p>
       </div>
     </div>
+  </div>);
+}
+
+function VentasEntregas({registros,fEjec,ejecutivos}){
+  const [anio,setAnio]=useState("Todos");
+  const base=fEjec==="Todos"?registros:registros.filter(r=>r.ejecutivo===fEjec);
+  const aniosSet=new Set();
+  base.forEach(r=>{const v=mesDe(r.creado);if(v)aniosSet.add(v.anio);const e=fueEntregado(r)?mesDe(fechaEntrega(r)):null;if(e)aniosSet.add(e.anio);});
+  const anios=[...aniosSet].sort((a,b)=>b-a);
+  const okAnio=y=>anio==="Todos"||String(y)===anio;
+
+  let ventasDinero=0,ventasUn=0,ventasNum=0,entrDinero=0,entrUn=0,entrNum=0;
+  const porMes={}; const porEjec={};
+  const addMes=(k,campo,dinero,un)=>{if(!porMes[k])porMes[k]={ventasD:0,ventasU:0,entrD:0,entrU:0};porMes[k][campo+"D"]+=dinero;porMes[k][campo+"U"]+=un;};
+  const addEjec=(e,campo,dinero,un)=>{if(!porEjec[e])porEjec[e]={ventasD:0,ventasU:0,ventasN:0,entrD:0,entrU:0,entrN:0};porEjec[e][campo+"D"]+=dinero;porEjec[e][campo+"U"]+=un;porEjec[e][campo+"N"]+=1;};
+
+  base.forEach(r=>{
+    const val=valorVenta(r),un=unidades(r),ej=r.ejecutivo||"(sin ejecutivo)";
+    const mv=mesDe(r.creado);
+    if(mv&&okAnio(mv.anio)){ventasDinero+=val;ventasUn+=un;ventasNum++;addMes(mv.key,"ventas",val,un);addEjec(ej,"ventas",val,un);}
+    if(fueEntregado(r)){const me=mesDe(fechaEntrega(r));if(me&&okAnio(me.anio)){entrDinero+=val;entrUn+=un;entrNum++;addMes(me.key,"entr",val,un);addEjec(ej,"entr",val,un);}}
+  });
+
+  const mesesOrden=Object.keys(porMes).sort();
+  const maxMes=Math.max(1,...mesesOrden.map(k=>Math.max(porMes[k].ventasD,porMes[k].entrD)));
+  const ejecs=Object.keys(porEjec).sort((a,b)=>porEjec[b].ventasD-porEjec[a].ventasD);
+  const nombreMes=k=>{const[a,m]=k.split("-").map(Number);return MESES_V[m-1]+" "+a;};
+
+  const KpiV=({label,dinero,unidades,num,tono})=>(<div className="rounded-xl border border-stone-200 bg-white px-4 py-3"><p className="text-xs font-medium text-slate-500">{label}</p><p className={`mt-1 text-2xl font-bold mono ${tono}`}>{pesos(dinero)}</p><p className="text-[11px] text-slate-400 mt-0.5">{num} operación(es) · {unidades} unidad(es)</p></div>);
+
+  return (<div className="space-y-5">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div><h2 className="text-lg font-bold text-slate-900">Ventas y Entregas</h2><p className="text-xs text-slate-500">Ventas por fecha de alta · Entregas por fecha de entrega{fEjec!=="Todos"?" · "+fEjec:""}</p></div>
+      <select value={anio} onChange={e=>setAnio(e.target.value)} className="rounded-lg border border-stone-300 px-3 py-2 text-sm"><option>Todos</option>{anios.map(a=><option key={a}>{a}</option>)}</select>
+    </div>
+
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <KpiV label="Total vendido" dinero={ventasDinero} unidades={ventasUn} num={ventasNum} tono="text-slate-900"/>
+      <KpiV label="Total entregado" dinero={entrDinero} unidades={entrUn} num={entrNum} tono="text-teal-600"/>
+    </div>
+
+    <div className="rounded-xl border border-stone-200 bg-white p-4">
+      <h3 className="text-sm font-bold text-slate-700 mb-3">Por mes</h3>
+      {mesesOrden.length===0?<p className="text-xs text-slate-400">Sin datos todavía.</p>:
+      <div className="space-y-2.5">{mesesOrden.map(k=>(<div key={k}>
+        <div className="flex justify-between text-xs mb-0.5"><span className="font-semibold text-slate-600">{nombreMes(k)}</span></div>
+        <div className="flex items-center gap-1.5"><span className="w-16 text-[10px] text-slate-400">Vendido</span><div className="flex-1 h-4 rounded bg-stone-100 overflow-hidden"><div className="h-full bg-slate-500" style={{width:`${porMes[k].ventasD/maxMes*100}%`}}></div></div><span className="w-24 text-right mono text-[11px] font-semibold text-slate-600">{pesos(porMes[k].ventasD)}</span></div>
+        <div className="flex items-center gap-1.5 mt-0.5"><span className="w-16 text-[10px] text-slate-400">Entregado</span><div className="flex-1 h-4 rounded bg-stone-100 overflow-hidden"><div className="h-full bg-teal-500" style={{width:`${porMes[k].entrD/maxMes*100}%`}}></div></div><span className="w-24 text-right mono text-[11px] font-semibold text-teal-600">{pesos(porMes[k].entrD)}</span></div>
+      </div>))}</div>}
+    </div>
+
+    <div className="rounded-xl border border-stone-200 bg-white overflow-hidden">
+      <h3 className="text-sm font-bold text-slate-700 p-4 pb-2">Por ejecutivo</h3>
+      <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-stone-50 text-left text-xs uppercase text-slate-500"><tr><th className="px-3 py-2">Ejecutivo</th><th className="px-3 py-2 text-right">Vendido</th><th className="px-3 py-2 text-right">Ventas</th><th className="px-3 py-2 text-right">Entregado</th><th className="px-3 py-2 text-right">Entregas</th></tr></thead>
+      <tbody className="divide-y divide-stone-100">{ejecs.map(e=>(<tr key={e} className="hover:bg-stone-50"><td className="px-3 py-2 font-medium">{e}</td><td className="px-3 py-2 text-right mono">{pesos(porEjec[e].ventasD)}</td><td className="px-3 py-2 text-right text-slate-500">{porEjec[e].ventasN} · {porEjec[e].ventasU}u</td><td className="px-3 py-2 text-right mono text-teal-700">{pesos(porEjec[e].entrD)}</td><td className="px-3 py-2 text-right text-slate-500">{porEjec[e].entrN} · {porEjec[e].entrU}u</td></tr>))}
+      {ejecs.length===0&&<tr><td colSpan={5} className="px-3 py-6 text-center text-slate-400">Sin datos.</td></tr>}</tbody>
+      {ejecs.length>0&&<tfoot className="bg-stone-50 font-bold"><tr><td className="px-3 py-2">Total</td><td className="px-3 py-2 text-right mono">{pesos(ventasDinero)}</td><td className="px-3 py-2 text-right text-slate-500">{ventasNum} · {ventasUn}u</td><td className="px-3 py-2 text-right mono text-teal-700">{pesos(entrDinero)}</td><td className="px-3 py-2 text-right text-slate-500">{entrNum} · {entrUn}u</td></tr></tfoot>}
+      </table></div>
+    </div>
+    <p className="text-[11px] text-slate-400">El valor de cada cliente se calcula con el precio de sus equipos (catálogo, editable en la ficha). Una venta = alta del cliente; una entrega = cliente marcado como Entregado.</p>
   </div>);
 }
 
@@ -282,7 +355,7 @@ function App(){
         "Equipo":(r.equipos||[]).filter(e=>e.tipo).map(e=>`${e.cantidad||1} x ${e.tipo}`).join(" ; "),
         "NIV":r.niv||"","Tipo de venta":r.tipoVenta,"Plazo (meses)":r.plazo||"","Adicionales":(r.adicionales||[]).join(", "),"Estatus":r.estatus};
       REQ_ALL.forEach(k=>{const v=(r.requisitos||{})[k];o[k]=v==="recibido"?"SI":v==="na"?"NA":"";});
-      o["Pendiente actual"]=r.queFalta;o["Entrega de fábrica o taller"]=r.entregaFabrica||"";o["Entrega programada"]=r.entregaProgramada;o["Compromiso"]=r.compromiso?r.compromiso.replace("T"," "):"";
+      o["Pendiente actual"]=r.queFalta;o["Patio de entrega"]=r.patioEntrega||"";o["Entrega de fábrica o taller"]=r.entregaFabrica||"";o["Entrega programada"]=r.entregaProgramada;o["Compromiso"]=r.compromiso?r.compromiso.replace("T"," "):"";
       o["Bitácora"]=(r.bitacora||[]).map(be=>`${be.fecha} | ${be.tipo} | ${be.contacto} | ${be.resultado}`).join(" ;; ");
       o["Notas"]=r.notas;
       return o;
@@ -329,7 +402,7 @@ function App(){
         <TableroEtapas counts={etapaCounts} total={porEjec.length} activo={fEstatus} onPick={est=>{setFEstatus(fEstatus===est?"":est);setVista("clientes");}}/>
 
         <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-          <div className="inline-flex rounded-lg border border-stone-300 bg-white p-0.5"><Tab activo={vista==="clientes"} onClick={()=>setVista("clientes")}>Clientes</Tab><Tab activo={vista==="tablero"} onClick={()=>setVista("tablero")}>Tablero</Tab><Tab activo={vista==="lista"} onClick={()=>setVista("lista")}>Lista</Tab><Tab activo={vista==="dia"} onClick={()=>setVista("dia")}>Día</Tab></div>
+          <div className="inline-flex rounded-lg border border-stone-300 bg-white p-0.5"><Tab activo={vista==="clientes"} onClick={()=>setVista("clientes")}>Clientes</Tab><Tab activo={vista==="tablero"} onClick={()=>setVista("tablero")}>Tablero</Tab><Tab activo={vista==="lista"} onClick={()=>setVista("lista")}>Lista</Tab><Tab activo={vista==="dia"} onClick={()=>setVista("dia")}>Día</Tab><Tab activo={vista==="ventas"} onClick={()=>setVista("ventas")}>Ventas y Entregas</Tab></div>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-2.5"><Icon name="search" size={14} className="text-slate-400"/><input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar cliente, NIV, folio, tel…" className="py-1.5 text-sm outline-none w-48"/></div>
             <Select value={fEjec} onChange={cambiarEjec} options={["Todos",...ejecutivos]} prefijo="Ejecutivo"/>
@@ -339,6 +412,7 @@ function App(){
         </div>
 
         {fEstatus && <div className="mb-3"><span className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">Etapa: {fEstatus} <button onClick={()=>setFEstatus("")} className="text-slate-500 hover:text-red-500"><Icon name="x" size={13}/></button></span></div>}
+        {vista==="ventas" && <VentasEntregas registros={registros} fEjec={fEjec} ejecutivos={ejecutivos}/>}
         {vista==="clientes" && (mostrados.length?<div className="grid gap-3 sm:grid-cols-2">{mostrados.map(r=><Tarjeta key={r.id} r={r} now={now} onEdit={setEditando} onListo={marcarLlamada}/>)}</div>:<Vacio texto="No hay clientes con los filtros actuales."/>)}
         {vista==="tablero" && <VistaTablero registros={visibles} now={now} onEdit={setEditando}/>}
         {vista==="lista" && <VistaLista registros={visibles} now={now} onEdit={setEditando}/>}
@@ -415,7 +489,8 @@ function Tarjeta({r,now,onEdit,onListo}){
       {r.adicionales&&r.adicionales.length>0 && <div className="mt-2 flex flex-wrap gap-1">{r.adicionales.map(a=><span key={a} className="inline-flex items-center gap-0.5 rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500"><Icon name="tag" size={9}/>{a}</span>)}</div>}
       <Cronometro r={r}/><ReqBarra r={r}/>{numArchivos(r)>0&&<p className="mt-1 text-[11px] font-semibold text-emerald-600">{numArchivos(r)} archivo(s) en el expediente</p>}
       {r.queFalta && <div className="mt-2 flex items-start gap-1.5 rounded-md bg-amber-50 px-2 py-1.5 text-xs text-amber-800"><Icon name="alert" size={13} className="mt-0.5 shrink-0"/><span><span className="font-semibold">Pendiente:</span> {r.queFalta}</span></div>}
-      {r.entregaFabrica && !(r.estatuses||[]).includes("Entregado") && <div className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-orange-200 bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-700"><Icon name="truck" size={14}/> Fábrica/taller: {largo(r.entregaFabrica)}</div>}
+      {r.patioEntrega && <div className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-600"><Icon name="pin" size={13}/> {r.patioEntrega}</div>}
+        {r.entregaFabrica && !(r.estatuses||[]).includes("Entregado") && <div className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-orange-200 bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-700"><Icon name="truck" size={14}/> Fábrica/taller: {largo(r.entregaFabrica)}</div>}
         {r.entregaProgramada && (r.estatus==="Entregado"?<div className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-teal-300 bg-teal-50 px-2.5 py-1.5 text-xs font-bold text-teal-700"><Icon name="check" size={14}/> Entregado el {largo(r.entregaProgramada)}</div>:<div className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700"><Icon name="truck" size={14}/> Entrega programada: {largo(r.entregaProgramada)}</div>)}
     </button>
     <div className="flex items-center gap-3 border-t border-stone-100 px-4 py-1.5 text-xs text-slate-500">{r.telefono && <a href={`tel:${r.telefono.replace(/[^0-9+]/g,"")}`} className="inline-flex items-center gap-1 hover:text-slate-800"><Icon name="phone" size={12}/>{r.telefono}</a>}{r.correo && <a href={`mailto:${r.correo}`} className="inline-flex items-center gap-1 hover:text-slate-800 truncate"><Icon name="mail" size={12}/>{r.correo}</a>}<button onClick={()=>onEdit(r)} className="ml-auto inline-flex items-center gap-1 font-semibold text-slate-600 hover:text-slate-900"><Icon name="plus" size={12}/> Interacción</button></div>
@@ -429,8 +504,8 @@ function TarjetaMini({r,now,onEdit}){
 
 /* ---------- Modal ---------- */
 function Modal({inicial,fEjec,ejecutivos,cliPorEjec,onClose,onSave,puedeEditar}){
-  const base=inicial||{creado:HOY,ejecutivo:fEjec!=="Todos"?fEjec:(ejecutivos[0]||""),cliente:"",folioVenta:"",folioJJ:"",tipoContrato:"",entregaFabrica:"",archivos:{},tipoCliente:"Cliente Nuevo",empresa:"",correo:"",telefono:"",niv:"",equipos:[{tipo:"",cantidad:1}],tipoVenta:"",plazo:"",adicionales:[],estatuses:["Presentación con Cliente"],estatus:"Presentación con Cliente",requisitos:reqPend("Cliente Nuevo"),queFalta:"",entregaProgramada:"",compromiso:"",compromisoCumplido:false,bitacora:[],notas:""};
-  const [f,setF]=useState({...base,niv:base.niv||"",folioVenta:base.folioVenta||"",folioJJ:base.folioJJ||"",tipoContrato:base.tipoContrato||"",entregaFabrica:base.entregaFabrica||"",estatuses:[...(base.estatuses||(base.estatus?[base.estatus]:[ESTATUS[0]]))],equipos:(base.equipos&&base.equipos.length)?base.equipos.map(e=>({...e})):[{tipo:"",cantidad:1}],adicionales:[...(base.adicionales||[])],requisitos:{...reqPend(base.tipoCliente||"Cliente Nuevo"),...(base.requisitos||{})},archivos:JSON.parse(JSON.stringify(base.archivos||{})),bitacora:[...(base.bitacora||[])]});
+  const base=inicial||{creado:HOY,ejecutivo:fEjec!=="Todos"?fEjec:(ejecutivos[0]||""),cliente:"",folioVenta:"",folioJJ:"",tipoContrato:"",patioEntrega:"",entregaFabrica:"",archivos:{},tipoCliente:"Cliente Nuevo",empresa:"",correo:"",telefono:"",niv:"",equipos:[{tipo:"",cantidad:1}],tipoVenta:"",plazo:"",adicionales:[],estatuses:["Presentación con Cliente"],estatus:"Presentación con Cliente",requisitos:reqPend("Cliente Nuevo"),queFalta:"",entregaProgramada:"",compromiso:"",compromisoCumplido:false,bitacora:[],notas:""};
+  const [f,setF]=useState({...base,niv:base.niv||"",folioVenta:base.folioVenta||"",folioJJ:base.folioJJ||"",tipoContrato:base.tipoContrato||"",entregaFabrica:base.entregaFabrica||"",patioEntrega:base.patioEntrega||"",estatuses:[...(base.estatuses||(base.estatus?[base.estatus]:[ESTATUS[0]]))],equipos:(base.equipos&&base.equipos.length)?base.equipos.map(e=>({precio:"",...e})):[{tipo:"",cantidad:1,precio:""}],adicionales:[...(base.adicionales||[])],requisitos:{...reqPend(base.tipoCliente||"Cliente Nuevo"),...(base.requisitos||{})},archivos:JSON.parse(JSON.stringify(base.archivos||{})),bitacora:[...(base.bitacora||[])]});
   const [subiendo,setSubiendo]=useState("");
   async function subirArchivo(docKey,file){
     if(!puedeEditar){alert("Modo consulta: no puedes subir archivos.");return;}
@@ -446,8 +521,8 @@ function Modal({inicial,fEjec,ejecutivos,cliPorEjec,onClose,onSave,puedeEditar})
   const toggleEst=est=>setF(p=>{const cur=p.estatuses||[];const has=cur.includes(est);const es=has?cur.filter(x=>x!==est):[...cur,est];return{...p,estatuses:es,estatus:principal(es)};});
   const setTC=v=>setF(p=>({...p,tipoCliente:v,requisitos:{...reqPend(v),...p.requisitos}}));
   const ciclaReq=k=>setF(p=>{const c=p.requisitos[k]||"pendiente";const n=c==="pendiente"?"recibido":c==="recibido"?"na":"pendiente";return {...p,requisitos:{...p.requisitos,[k]:n}};});
-  const setEq=(i,campo,val)=>setF(p=>({...p,equipos:p.equipos.map((e,j)=>j===i?{...e,[campo]:campo==="cantidad"?(val===""?"":Math.max(1,parseInt(val)||1)):val}:e)}));
-  const addEq=()=>setF(p=>({...p,equipos:[...p.equipos,{tipo:"",cantidad:1}]}));
+  const setEq=(i,campo,val)=>setF(p=>({...p,equipos:p.equipos.map((e,j)=>{if(j!==i)return e;if(campo==="cantidad")return{...e,cantidad:val===""?"":Math.max(1,parseInt(val)||1)};if(campo==="tipo"){const pc=precioCatalogo(val);return{...e,tipo:val,precio:(e.precio===""||e.precio==null||Number(e.precio)===precioCatalogo(e.tipo))&&pc?pc:e.precio};}if(campo==="precio")return{...e,precio:val===""?"":Math.max(0,Number(val)||0)};return{...e,[campo]:val};})}));
+  const addEq=()=>setF(p=>({...p,equipos:[...p.equipos,{tipo:"",cantidad:1,precio:""}]}));
   const delEq=i=>setF(p=>({...p,equipos:p.equipos.filter((_,j)=>j!==i)}));
   const setTV=v=>setF(p=>({...p,tipoVenta:v,plazo:(PLAZOS[v]||[]).includes(p.plazo)?p.plazo:""}));
   const toggleAdi=a=>setF(p=>({...p,adicionales:p.adicionales.includes(a)?p.adicionales.filter(x=>x!==a):[...p.adicionales,a]}));
@@ -479,7 +554,8 @@ function Modal({inicial,fEjec,ejecutivos,cliPorEjec,onClose,onSave,puedeEditar})
 
         <div className="grid grid-cols-2 gap-3"><Campo label="Correo electrónico"><input type="email" value={f.correo} onChange={e=>set("correo",e.target.value)} className={inp} placeholder="cliente@correo.com"/></Campo><Campo label="Teléfono"><input value={f.telefono} onChange={e=>set("telefono",e.target.value)} className={inp} placeholder="871 000 0000"/></Campo></div>
 
-        <div><span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Equipo / remolque</span><div className="flex gap-2 mb-1 text-[10px] uppercase tracking-wide text-slate-400 font-semibold"><span className="flex-1">Descripción</span><span className="w-16 text-center">Cant.</span>{f.equipos.length>1 && <span className="w-8"></span>}</div><div className="space-y-2">{f.equipos.map((eq,i)=>(<div key={i} className="flex items-center gap-2"><input value={eq.tipo} onChange={e=>setEq(i,"tipo",e.target.value)} placeholder="Ej. Portacontenedor 40/20" className="flex-1 min-w-0 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"/><input type="number" min="1" value={eq.cantidad} onChange={e=>setEq(i,"cantidad",e.target.value)} className="w-16 shrink-0 text-center rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"/>{f.equipos.length>1 && <button onClick={()=>delEq(i)} className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-slate-400 hover:bg-stone-100 hover:text-red-500"><Icon name="x" size={16}/></button>}</div>))}</div><button onClick={addEq} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-slate-900"><Icon name="plus" size={14}/> Agregar equipo</button></div>
+        <div><span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Equipo / remolque</span><div className="flex gap-2 mb-1 text-[10px] uppercase tracking-wide text-slate-400 font-semibold"><span className="flex-1">Descripción</span><span className="w-16 text-center">Cant.</span>{f.equipos.length>1 && <span className="w-8"></span>}</div><div className="space-y-2">{f.equipos.map((eq,i)=>{const sub=precioEquipoLinea(eq)*(Number(eq.cantidad)||0);return (<div key={i} className="rounded-lg border border-stone-200 bg-stone-50/50 p-2"><div className="flex items-center gap-2"><input list="dl-catalogo" value={eq.tipo} onChange={e=>setEq(i,"tipo",e.target.value)} placeholder="Escribe o elige del catálogo…" className="flex-1 min-w-0 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"/><input type="number" min="1" value={eq.cantidad} onChange={e=>setEq(i,"cantidad",e.target.value)} title="Cantidad" className="w-14 shrink-0 text-center rounded-lg border border-stone-300 bg-white px-2 py-2 text-sm outline-none focus:border-slate-400"/>{f.equipos.length>1 && <button onClick={()=>delEq(i)} className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-slate-400 hover:bg-stone-100 hover:text-red-500"><Icon name="x" size={16}/></button>}</div><div className="mt-1.5 flex items-center gap-2 pl-0.5"><span className="text-[11px] font-medium text-slate-400">Precio unit.</span><span className="text-slate-400 text-sm">$</span><input type="number" min="0" value={eq.precio===""||eq.precio==null?"":eq.precio} onChange={e=>setEq(i,"precio",e.target.value)} placeholder={precioCatalogo(eq.tipo)?String(precioCatalogo(eq.tipo)):"0"} className="w-32 rounded-lg border border-stone-300 bg-white px-2 py-1 text-sm mono outline-none focus:border-slate-400"/>{precioCatalogo(eq.tipo)>0 && (eq.precio===""||eq.precio==null)&&<span className="text-[10px] text-emerald-600">✓ del catálogo</span>}<span className="ml-auto text-xs font-bold text-slate-600 mono">{sub>0?pesos(sub):""}</span></div></div>);})}
+              <datalist id="dl-catalogo">{CATALOGO.map(c=><option key={c.n} value={c.n}>{c.m} · {pesos(c.p)}</option>)}</datalist></div><div className="mt-2 flex items-center justify-between"><button onClick={addEq} className="inline-flex items-center gap-1 text-sm font-semibold text-slate-600 hover:text-slate-900"><Icon name="plus" size={15}/> Agregar equipo</button>{valorVenta(f)>0 && <span className="text-sm font-bold text-slate-800">Valor de la venta: <span className="mono text-emerald-700">{pesos(valorVenta(f))}</span></span>}</div></div>
 
         <Campo label="NIV de equipo"><textarea value={f.niv} onChange={e=>set("niv",e.target.value)} rows={2} placeholder="Captura uno o varios NIV (uno por línea o separados por coma)" className={inp}/></Campo>
         <div><span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Tipo de contrato</span><div className="grid grid-cols-2 gap-2">{TIPO_CONTRATO.map(op=>{const a=f.tipoContrato===op;return <button key={op} onClick={()=>set("tipoContrato",a?"":op)} className={`rounded-lg border px-2 py-2 text-sm font-medium ${a?(op==="Notariado"?"bg-violet-600 text-white border-violet-600":"bg-sky-600 text-white border-sky-600"):"border-stone-300 text-slate-600 hover:bg-stone-50"}`}>{op}</button>;})}</div></div>
@@ -503,6 +579,7 @@ function Modal({inicial,fEjec,ejecutivos,cliPorEjec,onClose,onSave,puedeEditar})
 
         <Campo label="Pendiente actual (nota)"><textarea value={f.queFalta} onChange={e=>set("queFalta",e.target.value)} rows={2} placeholder="Algo fuera del expediente (ej. cliente confirma plazo)…" className={inp}/></Campo>
         <div className="rounded-xl border border-stone-200 bg-stone-50 p-3 space-y-3"><div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500"><Icon name="alarm" size={14}/> Próximo compromiso de llamada</div><input type="datetime-local" value={f.compromiso} onChange={e=>set("compromiso",e.target.value)} className={inp}/>{f.compromiso && <label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={f.compromisoCumplido} onChange={e=>set("compromisoCumplido",e.target.checked)} className="h-4 w-4"/> Ya realicé esta llamada</label>}<p className="text-xs text-slate-400">Con fecha y hora, el cliente se marca en rojo (vencida) o ámbar (por marcar pronto).</p></div>
+        <Campo label="Patio de entrega"><select value={f.patioEntrega} onChange={e=>set("patioEntrega",e.target.value)} className={inp}><option value="">— Selecciona patio —</option>{PATIOS.map(p=><option key={p}>{p}</option>)}</select></Campo>
         <div className="grid grid-cols-2 gap-3"><Campo label="Entrega de fábrica o taller" hint="Cuándo llega el equipo"><input type="date" value={f.entregaFabrica} onChange={e=>set("entregaFabrica",e.target.value)} className={inp}/></Campo><Campo label="Fecha de entrega al cliente"><input type="date" value={f.entregaProgramada} onChange={e=>set("entregaProgramada",e.target.value)} className={inp}/></Campo></div>
         <Campo label="Notas (opcional)"><textarea value={f.notas} onChange={e=>set("notas",e.target.value)} rows={2} className={inp}/></Campo>
       </div>
@@ -539,3 +616,4 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
+
