@@ -62,6 +62,9 @@ function variantesDe(eq){const k=_norm(eq);return CAT2.filter(c=>_norm(c.n)===k)
 function precioEquipoLinea(eq){const auto=precioCombo(eq.tipo,eq.marca,eq.anio,eq.condicion);if(auto>0)return auto;const p=Number(eq.precio);return isNaN(p)?0:p;}
 function valorVenta(r){return (r.equipos||[]).reduce((s,eq)=>s+precioEquipoLinea(eq)*(Number(eq.cantidad)||0),0);}
 function unidades(r){return (r.equipos||[]).reduce((s,eq)=>s+(Number(eq.cantidad)||0),0);}
+function entregadosCli(r){if(r.entregaModo==="completa")return unidades(r);if(r.entregaModo==="parcial")return (r.nivsEntrega||[]).filter(e=>e.entregado).length;return 0;}
+function faltanCli(r){return Math.max(0,unidades(r)-entregadosCli(r));}
+function esParcial(r){return r.entregaModo==="parcial";}
 const pesos=n=>{const v=Number(n)||0;return v.toLocaleString("es-MX",{style:"currency",currency:"MXN",maximumFractionDigits:0});};
 const MESES_V=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 function mesDe(fecha){if(!fecha)return null;const s=String(fecha).slice(0,7);const[a,m]=s.split("-").map(Number);if(!a||!m)return null;return {anio:a,mes:m,key:a+"-"+String(m).padStart(2,"0")};}
@@ -345,6 +348,7 @@ function App(){
   const [fCli,setFCli]=useState("Todos");
   const [busca,setBusca]=useState("");
   const [fEstatus,setFEstatus]=useState("");
+  const [fParcial,setFParcial]=useState(false);
   const [orden,setOrden]=useState("Predeterminado");
   const [editando,setEditando]=useState(null);
   const [aviso,setAviso]=useState(null);
@@ -360,8 +364,8 @@ function App(){
   const cliPorEjec=useMemo(()=>{const m={};registros.forEach(r=>{if(!r.ejecutivo)return;(m[r.ejecutivo]=m[r.ejecutivo]||new Set()).add(r.cliente);});const o={};Object.keys(m).forEach(k=>o[k]=[...m[k]].filter(Boolean).sort());return Object.keys(o).length?o:CLI_DEF;},[registros]);
   const clientesOpc=fEjec==="Todos"?["Todos",...new Set(Object.values(cliPorEjec).flat())]:["Todos",...(cliPorEjec[fEjec]||[])];
 
-  const pasa=r=>(fEjec==="Todos"||r.ejecutivo===fEjec)&&(fCli==="Todos"||r.cliente===fCli)&&(!busca||(()=>{const h=quita((r.cliente||"")+" "+(r.niv||"")+" "+(r.folioVenta||"")+" "+(r.folioJJ||"")+" "+(r.telefono||"")+" "+(r.ejecutivo||"")+" "+(r.empresa||"")+" "+(r.tipoContrato||"")+" "+((r.equipos||[]).map(e=>e.tipo).join(" ")));return quita(busca).split(" ").filter(Boolean).every(w=>h.includes(w));})())&&(fEstatus===""||r.estatus===fEstatus);
-  const visibles=useMemo(()=>registros.filter(pasa),[registros,fEjec,fCli,busca,fEstatus]);
+  const pasa=r=>(fEjec==="Todos"||r.ejecutivo===fEjec)&&(fCli==="Todos"||r.cliente===fCli)&&(!busca||(()=>{const h=quita((r.cliente||"")+" "+(r.niv||"")+" "+(r.folioVenta||"")+" "+(r.folioJJ||"")+" "+(r.telefono||"")+" "+(r.ejecutivo||"")+" "+(r.empresa||"")+" "+(r.tipoContrato||"")+" "+((r.equipos||[]).map(e=>e.tipo).join(" ")));return quita(busca).split(" ").filter(Boolean).every(w=>h.includes(w));})())&&(fEstatus===""||r.estatus===fEstatus)&&(!fParcial||esParcial(r));
+  const visibles=useMemo(()=>registros.filter(pasa),[registros,fEjec,fCli,busca,fEstatus,fParcial]);
   const porEjec=useMemo(()=>registros.filter(r=>fEjec==="Todos"||r.ejecutivo===fEjec),[registros,fEjec]);
   const etapaCounts=useMemo(()=>ESTATUS.map(e=>({est:e,n:porEjec.filter(r=>r.estatus===e).length})),[porEjec]);
   const ordenados=useMemo(()=>{const peso={vencido:0,proximo:1,programado:2};return [...visibles].sort((a,b)=>{const ea=estadoCompromiso(a,now),eb=estadoCompromiso(b,now);const pa=ea?peso[ea]:9,pb=eb?peso[eb]:9;if(pa!==pb)return pa-pb;return a.cliente.localeCompare(b.cliente);});},[visibles,now]);
@@ -383,6 +387,10 @@ function App(){
   const cancelClientes=cancelados.length;
   const cancelEquipos=cancelados.reduce((s,r)=>s+numEquipos(r),0);
   const pendEntregar=Math.max(0,totalEquipos-entregEquipos-cancelEquipos);
+  const parciales=porEjec.filter(esParcial);
+  const parcialClientes=parciales.length;
+  const parcialEntregados=parciales.reduce((s,r)=>s+entregadosCli(r),0);
+  const parcialFaltan=parciales.reduce((s,r)=>s+faltanCli(r),0);
 
   const guardar=reg=>{const id=reg.id||(Math.max(0,...registros.map(x=>x.id))+1);const saved=normEst({...reg,id});if((saved.estatuses||[]).includes("Entregado")){if(!saved.fechaEntregadoMarcado)saved.fechaEntregadoMarcado=HOY;}else{saved.fechaEntregadoMarcado="";}setRegistros(prev=>prev.some(r=>r.id===id)?prev.map(r=>r.id===id?saved:r):[...prev,saved]);setEditando(null);if(CLOUD){setSync("Guardando…");apiSave(saved).then(()=>setSync("Guardado en la nube ✓")).catch(()=>setSync("⚠ Error al guardar en la nube"));}};
   const marcarLlamada=id=>{setRegistros(prev=>prev.map(r=>r.id===id?{...r,compromisoCumplido:true}:r));if(CLOUD){const rec=registros.find(r=>r.id===id);if(rec)apiSave({...rec,compromisoCumplido:true}).catch(()=>{});}};
@@ -435,12 +443,13 @@ function App(){
 
         {urgentes.length>0 && <Banner urgentes={urgentes} now={now} onEdit={setEditando} onListo={marcarLlamada} hayVencidas={hayVencidas}/>}
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-3 mb-5">
           <Kpi icon="user" label={fEjec==="Todos"?"Clientes (total)":"Clientes · "+fEjec} valor={totalClientes} tono="text-slate-900"/>
           <Kpi icon="truck" label={fEjec==="Todos"?"Equipos · unidades":"Equipos · "+fEjec} valor={totalEquipos} tono="text-amber-600"/>
           <button onClick={()=>{setFEstatus(fEstatus==="Entregado"?"":"Entregado");setVista("clientes");}} className={`rounded-xl border bg-white px-4 py-3 text-left transition-all ${fEstatus==="Entregado"?"border-teal-400 ring-2 ring-teal-200":"border-stone-200 hover:bg-stone-50"}`}><div className="flex items-center gap-1.5 text-slate-400"><Icon name="check" size={16}/><span className="text-xs font-medium text-slate-500">{fEjec==="Todos"?"Entregados":"Entregados · "+fEjec}</span></div><p className="mt-1 text-2xl font-bold mono text-teal-600 leading-none">{entregEquipos}<span className="text-xs font-medium text-slate-400"> equipos</span></p><p className="text-[11px] text-slate-400 mt-0.5">{entregClientes} cliente(s)</p></button>
           <button onClick={()=>{setFEstatus(fEstatus==="Cancelado"?"":"Cancelado");setVista("clientes");}} className={`rounded-xl border bg-white px-4 py-3 text-left transition-all ${fEstatus==="Cancelado"?"border-rose-400 ring-2 ring-rose-200":"border-stone-200 hover:bg-stone-50"}`}><div className="flex items-center gap-1.5 text-slate-400"><Icon name="x" size={16}/><span className="text-xs font-medium text-slate-500">{fEjec==="Todos"?"Cancelados":"Cancelados · "+fEjec}</span></div><p className="mt-1 text-2xl font-bold mono text-rose-600 leading-none">{cancelEquipos}<span className="text-xs font-medium text-slate-400"> equipos</span></p><p className="text-[11px] text-slate-400 mt-0.5">{cancelClientes} cliente(s)</p></button>
           <Kpi icon="truck" label={fEjec==="Todos"?"Pendientes por entregar":"Pend. entregar · "+fEjec} valor={pendEntregar} tono="text-orange-600"/>
+          <button onClick={()=>setFParcial(v=>!v)} className={`rounded-xl border bg-white px-4 py-3 text-left transition-all ${fParcial?"border-amber-400 ring-2 ring-amber-200":"border-stone-200 hover:bg-stone-50"}`}><div className="flex items-center gap-1.5 text-slate-400"><Icon name="truck" size={16}/><span className="text-xs font-medium text-slate-500">{fEjec==="Todos"?"Entrega parcial":"Parcial · "+fEjec}</span></div><p className="mt-1 text-2xl font-bold mono text-amber-600 leading-none">{parcialClientes}<span className="text-xs font-medium text-slate-400"> cliente(s)</span></p><p className="text-[11px] text-slate-400 mt-0.5">{parcialEntregados} entregados · {parcialFaltan} por entregar</p></button>
           <Kpi icon="alarm" label="Llamadas por hacer" valor={porMarcar} tono={hayVencidas?"text-red-600":"text-slate-900"}/>
           <Kpi icon="clip" label="Expedientes por completar" valor={expIncompletos} tono="text-indigo-600"/>
           <Kpi icon="calendar" label="Entregas próx. 7 días" valor={entregas7} tono="text-emerald-600"/>
@@ -528,7 +537,7 @@ function Tarjeta({r,now,onEdit,onListo}){
   const ring=e==="vencido"?"ring-2 ring-red-400 border-red-300":e==="proximo"?"ring-2 ring-amber-400 border-amber-300":"border-stone-200";
   return (<div className={`group relative w-full overflow-hidden rounded-xl border bg-white transition-shadow hover:shadow-md ${ring}`}><span className={`absolute inset-y-0 left-0 w-1.5 ${c.spine}`}></span>
     <button onClick={()=>onEdit(r)} className="block w-full p-4 pl-5 text-left">
-      <div className="flex items-start justify-between gap-2"><div className="flex items-center gap-2 min-w-0">{e && <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${e==="vencido"?"bg-red-500":e==="proximo"?"bg-amber-500":"bg-sky-400"}`}></span>}<div className="min-w-0"><div className="flex items-center gap-1.5"><p className={`font-bold leading-tight truncate ${e==="vencido"?"text-red-700":e==="proximo"?"text-amber-800":"text-slate-900"}`}>{r.cliente}</p></div><p className="text-xs text-slate-500 mt-0.5">{r.ejecutivo}</p>{r.tipoContrato&&<span className={`mt-1 inline-block rounded border px-1.5 py-0.5 text-[10px] font-bold ${r.tipoContrato==="Notariado"?"border-violet-200 bg-violet-50 text-violet-700":"border-sky-200 bg-sky-50 text-sky-700"}`}>Contrato {r.tipoContrato}</span>}{(r.folioVenta||r.folioJJ)&&<p className="text-[10px] text-slate-400 mono mt-0.5">{r.folioVenta?`V: ${r.folioVenta}`:""}{r.folioVenta&&r.folioJJ?"  ·  ":""}{r.folioJJ?`JJ: ${r.folioJJ}`:""}</p>}</div></div><div className="flex flex-col items-end gap-1 shrink-0"><Badges r={r}/><div className="flex items-center gap-1"><ClienteTipoTag tc={r.tipoCliente}/><EmpresaTag empresa={r.empresa}/></div></div></div>
+      <div className="flex items-start justify-between gap-2"><div className="flex items-center gap-2 min-w-0">{e && <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${e==="vencido"?"bg-red-500":e==="proximo"?"bg-amber-500":"bg-sky-400"}`}></span>}<div className="min-w-0"><div className="flex items-center gap-1.5"><p className={`font-bold leading-tight truncate ${e==="vencido"?"text-red-700":e==="proximo"?"text-amber-800":"text-slate-900"}`}>{r.cliente}</p></div><p className="text-xs text-slate-500 mt-0.5">{r.ejecutivo}</p>{r.tipoContrato&&<span className={`mt-1 inline-block rounded border px-1.5 py-0.5 text-[10px] font-bold ${r.tipoContrato==="Notariado"?"border-violet-200 bg-violet-50 text-violet-700":"border-sky-200 bg-sky-50 text-sky-700"}`}>Contrato {r.tipoContrato}</span>}{esParcial(r)&&<span className="mt-1 ml-1 inline-block rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Entrega parcial {entregadosCli(r)}/{unidades(r)}</span>}{(r.folioVenta||r.folioJJ)&&<p className="text-[10px] text-slate-400 mono mt-0.5">{r.folioVenta?`V: ${r.folioVenta}`:""}{r.folioVenta&&r.folioJJ?"  ·  ":""}{r.folioJJ?`JJ: ${r.folioJJ}`:""}</p>}</div></div><div className="flex flex-col items-end gap-1 shrink-0"><Badges r={r}/><div className="flex items-center gap-1"><ClienteTipoTag tc={r.tipoCliente}/><EmpresaTag empresa={r.empresa}/></div></div></div>
       {eqt && <p className="mt-2 text-xs font-medium text-slate-600 inline-flex items-start gap-1"><Icon name="truck" size={12} className="text-slate-400 mt-0.5 shrink-0"/><span>{eqt}</span></p>}
       {r.niv && <p className="mt-1 text-xs text-slate-500 mono truncate">NIV: {String(r.niv).split(/[\n,]+/).map(x=>x.trim()).filter(Boolean).join(", ")}</p>}{r.tipoVenta && <p className="mt-1 text-xs text-slate-500"><span className="font-semibold text-slate-600">{r.tipoVenta}</span>{r.plazo?` · ${r.plazo} meses`:""}</p>}
       <div className="mt-2 rounded-md bg-stone-50 border border-stone-100 px-2 py-1.5 text-xs">{u?(<div className="flex items-start gap-1.5"><Icon name="history" size={12} className="text-slate-400 mt-0.5 shrink-0"/><div className="min-w-0"><span className="font-semibold text-slate-600">{corto(u.fecha)} · {u.tipo} · </span><ContactoTag contacto={u.contacto} inline/>{u.resultado && <span className="text-slate-600"> — {u.resultado}</span>}<span className="text-slate-400 mono"> · {nb} {nb===1?"interacción":"interacciones"}</span></div></div>):<span className="text-slate-400 inline-flex items-center gap-1"><Icon name="history" size={12}/> Sin interacciones aún</span>}</div>
@@ -551,7 +560,7 @@ function TarjetaMini({r,now,onEdit}){
 /* ---------- Modal ---------- */
 function Modal({inicial,fEjec,ejecutivos,cliPorEjec,onClose,onSave,puedeEditar}){
   const base=inicial||{creado:HOY,ejecutivo:fEjec!=="Todos"?fEjec:(ejecutivos[0]||""),cliente:"",folioVenta:"",folioJJ:"",tipoContrato:"",patioEntrega:"",entregaFabrica:"",archivos:{},tipoCliente:"Cliente Nuevo",empresa:"",correo:"",telefono:"",niv:"",equipos:[{tipo:"",cantidad:1}],tipoVenta:"",plazo:"",adicionales:[],estatuses:["Presentación con Cliente"],estatus:"Presentación con Cliente",requisitos:reqPend("Cliente Nuevo"),queFalta:"",entregaProgramada:"",compromiso:"",compromisoCumplido:false,bitacora:[],notas:""};
-  const [f,setF]=useState({...base,niv:base.niv||"",folioVenta:base.folioVenta||"",folioJJ:base.folioJJ||"",tipoContrato:base.tipoContrato||"",entregaFabrica:base.entregaFabrica||"",patioEntrega:base.patioEntrega||"",estatuses:[...(base.estatuses||(base.estatus?[base.estatus]:[ESTATUS[0]]))],equipos:(base.equipos&&base.equipos.length)?base.equipos.map(e=>({marca:"",anio:"",condicion:"",precio:"",...e})):[{tipo:"",cantidad:1,marca:"",anio:"",condicion:"",precio:""}],adicionales:[...(base.adicionales||[])],requisitos:{...reqPend(base.tipoCliente||"Cliente Nuevo"),...(base.requisitos||{})},archivos:JSON.parse(JSON.stringify(base.archivos||{})),bitacora:[...(base.bitacora||[])]});
+  const [f,setF]=useState({...base,niv:base.niv||"",folioVenta:base.folioVenta||"",folioJJ:base.folioJJ||"",tipoContrato:base.tipoContrato||"",entregaFabrica:base.entregaFabrica||"",patioEntrega:base.patioEntrega||"",estatuses:[...(base.estatuses||(base.estatus?[base.estatus]:[ESTATUS[0]]))],equipos:(base.equipos&&base.equipos.length)?base.equipos.map(e=>({marca:"",anio:"",condicion:"",precio:"",...e})):[{tipo:"",cantidad:1,marca:"",anio:"",condicion:"",precio:""}],adicionales:[...(base.adicionales||[])],requisitos:{...reqPend(base.tipoCliente||"Cliente Nuevo"),...(base.requisitos||{})},archivos:JSON.parse(JSON.stringify(base.archivos||{})),entregaModo:base.entregaModo||"",nivsEntrega:(base.nivsEntrega||[]).map(x=>({niv:x.niv||"",entregado:!!x.entregado})),bitacora:[...(base.bitacora||[])]});
   const [subiendo,setSubiendo]=useState("");
   async function subirArchivo(docKey,file){
     if(!puedeEditar){alert("Modo consulta: no puedes subir archivos.");return;}
@@ -585,7 +594,7 @@ function Modal({inicial,fEjec,ejecutivos,cliPorEjec,onClose,onSave,puedeEditar})
   const st=reqStats(f);const valido=f.cliente;const plazosDisp=PLAZOS[f.tipoVenta]||[];
   const bitOrd=[...f.bitacora].sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||"")||(b.id||0)-(a.id||0));
   const inp="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100";
-  const guardarLimpio=()=>onSave({...f,equipos:f.equipos.filter(e=>e.tipo.trim()).map(e=>({tipo:e.tipo.trim(),cantidad:Number(e.cantidad)||1,marca:e.marca||"",anio:e.anio||"",condicion:e.condicion||"",precio:(e.precio===""||e.precio==null)?"":Number(e.precio)}))});
+  const guardarLimpio=()=>onSave({...f,equipos:f.equipos.filter(e=>e.tipo.trim()).map(e=>({tipo:e.tipo.trim(),cantidad:Number(e.cantidad)||1,marca:e.marca||"",anio:e.anio||"",condicion:e.condicion||"",precio:(e.precio===""||e.precio==null)?"":Number(e.precio)})),entregaModo:f.entregaModo||"",nivsEntrega:(f.nivsEntrega||[]).map(x=>({niv:(x.niv||"").trim(),entregado:!!x.entregado})).filter(x=>x.niv||x.entregado)});
 
   return (<div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/40 sm:p-4" onClick={onClose}>
     <div className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white shadow-xl" onClick={e=>e.stopPropagation()}>
@@ -623,6 +632,27 @@ function Modal({inicial,fEjec,ejecutivos,cliPorEjec,onClose,onSave,puedeEditar})
                   </div>
                 </div>);})}
               <datalist id="dl-catalogo">{EQUIPOS_CAT.map(n=><option key={n} value={n}/>)}</datalist></div><div className="mt-2 flex items-center justify-between"><button onClick={addEq} className="inline-flex items-center gap-1 text-sm font-semibold text-slate-600 hover:text-slate-900"><Icon name="plus" size={15}/> Agregar equipo</button>{valorVenta(f)>0 && <span className="text-sm font-bold text-slate-800">Valor de la venta: <span className="mono text-emerald-700">{pesos(valorVenta(f))}</span></span>}</div></div>
+
+        <div className="rounded-xl border border-stone-200 p-3">
+          <h3 className="text-sm font-bold text-slate-700 inline-flex items-center gap-1.5 mb-2"><Icon name="truck" size={15}/> Entrega de equipos</h3>
+          <div className="grid grid-cols-3 gap-2">
+            {[["","Sin entregar"],["parcial","Entrega parcial"],["completa","Entrega completa"]].map(([v,l])=>{const a=(f.entregaModo||"")===v;return <button key={v} onClick={()=>setF(p=>({...p,entregaModo:v}))} className={`rounded-lg border px-2 py-2 text-xs font-semibold ${a?(v==="completa"?"border-teal-500 bg-teal-600 text-white":v==="parcial"?"border-amber-500 bg-amber-500 text-white":"border-slate-400 bg-slate-700 text-white"):"border-stone-300 text-slate-600 hover:bg-stone-50"}`}>{l}</button>;})}
+          </div>
+          {f.entregaModo==="completa" && <p className="mt-2 text-xs text-teal-700 font-medium">Los {unidades(f)} equipos del cliente quedan como entregados.</p>}
+          {f.entregaModo==="parcial" && <div className="mt-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-semibold text-slate-500">NIVs entregados: {(f.nivsEntrega||[]).filter(e=>e.entregado).length} de {unidades(f)} · faltan {Math.max(0,unidades(f)-(f.nivsEntrega||[]).filter(e=>e.entregado).length)}</span>
+              {unidades(f)>0 && (f.nivsEntrega||[]).length===0 && <button onClick={()=>setF(p=>({...p,nivsEntrega:Array.from({length:unidades(p)},()=>({niv:"",entregado:false}))}))} className="text-xs font-semibold text-amber-700 hover:underline">Generar {unidades(f)} filas</button>}
+            </div>
+            <div className="space-y-1.5">{(f.nivsEntrega||[]).map((e,i)=>(
+              <div key={i} className="flex items-center gap-2">
+                <button onClick={()=>setF(p=>({...p,nivsEntrega:p.nivsEntrega.map((x,j)=>j===i?{...x,entregado:!x.entregado}:x)}))} className={`grid h-7 w-7 shrink-0 place-items-center rounded-md border ${e.entregado?"border-teal-500 bg-teal-600 text-white":"border-stone-300 bg-white text-transparent"}`}><Icon name="check" size={14}/></button>
+                <input value={e.niv} onChange={ev=>setF(p=>({...p,nivsEntrega:p.nivsEntrega.map((x,j)=>j===i?{...x,niv:ev.target.value}:x)}))} placeholder={`NIV del equipo ${i+1}`} className={`flex-1 rounded-lg border px-3 py-1.5 text-sm mono outline-none focus:border-slate-400 ${e.entregado?"border-teal-200 bg-teal-50/40":"border-stone-300"}`}/>
+                <button onClick={()=>setF(p=>({...p,nivsEntrega:p.nivsEntrega.filter((_,j)=>j!==i)}))} className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-slate-400 hover:bg-stone-100 hover:text-red-500"><Icon name="x" size={14}/></button>
+              </div>))}</div>
+            <button onClick={()=>setF(p=>({...p,nivsEntrega:[...(p.nivsEntrega||[]),{niv:"",entregado:false}]}))} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-slate-900"><Icon name="plus" size={14}/> Agregar NIV</button>
+          </div>}
+        </div>
 
         <Campo label="NIV de equipo"><textarea value={f.niv} onChange={e=>set("niv",e.target.value)} rows={2} placeholder="Captura uno o varios NIV (uno por línea o separados por coma)" className={inp}/></Campo>
         <div><span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Tipo de contrato</span><div className="grid grid-cols-2 gap-2">{TIPO_CONTRATO.map(op=>{const a=f.tipoContrato===op;return <button key={op} onClick={()=>set("tipoContrato",a?"":op)} className={`rounded-lg border px-2 py-2 text-sm font-medium ${a?(op==="Notariado"?"bg-violet-600 text-white border-violet-600":"bg-sky-600 text-white border-sky-600"):"border-stone-300 text-slate-600 hover:bg-stone-50"}`}>{op}</button>;})}</div></div>
@@ -683,3 +713,4 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
+
